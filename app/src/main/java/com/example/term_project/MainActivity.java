@@ -1,19 +1,17 @@
 package com.example.term_project;
 
 import android.os.Bundle;
+import android.widget.TextView;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager2.widget.ViewPager2;
-
 
 public class MainActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
-    private ScreenSlidePagerAdapter pagerAdapter;
+    private TextView tvPlayerName;
+    private TextView tvGold;
+    private TextView tvGem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,11 +19,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         viewPager = findViewById(R.id.viewPager);
-        pagerAdapter = new ScreenSlidePagerAdapter(this);
-        viewPager.setAdapter(pagerAdapter);
 
-        // 가운데 페이지를 처음 화면으로 설정
-        viewPager.setCurrentItem(1, false);
+        tvPlayerName = findViewById(R.id.tvPlayerName);
+        tvGold = findViewById(R.id.tvGold);
+        tvGem = findViewById(R.id.tvGem);
+
+        viewPager.setAdapter(new ViewPagerAdapter(this));
+        viewPager.setCurrentItem(1, false);   // 추가
+
+        tvPlayerName.setText("홍길동");
+        tvGold.setText("Gold: 1200");
+        tvGem.setText("Gem: 35");
     }
-
 }
