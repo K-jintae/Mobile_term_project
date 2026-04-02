@@ -26,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
 
         // 가운데 페이지를 처음 화면으로 설정
         viewPager.setCurrentItem(1, false);
+
+
     }
 
 }
