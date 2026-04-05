@@ -8,9 +8,10 @@
 (2026.04.02 22:29)
 
 
-### 캐릭터, 의상 이미지 이름 설명
+### 캐릭터, 의상, 인테리어 이미지 이름 설명
 
 기본 캐릭터 몸: character_base.png</br>
 기본 캐릭터 표정: face_dafault.png</br>
 캐릭터 모자: hat_어쩌고.png</br>
-캐릭터 의상: clothes_어쩌고.png
+캐릭터 의상: clothes_어쩌고.png</br>
+인테리어(배경): interior_어쩌고.png
