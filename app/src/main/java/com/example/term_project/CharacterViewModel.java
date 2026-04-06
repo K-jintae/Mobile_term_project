@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel;
 public class CharacterViewModel extends ViewModel {
 
     // 기본 캐릭터 몸체
-    private final MutableLiveData<Integer> character = new MutableLiveData<>(R.drawable.sample1);
+    private final MutableLiveData<Integer> character = new MutableLiveData<>(R.drawable.character_base);
 
     // 표정
     private final MutableLiveData<Integer> face = new MutableLiveData<>(R.drawable.face_default);
@@ -51,7 +51,7 @@ public class CharacterViewModel extends ViewModel {
     }
 
     public void reset() {
-        character.setValue(R.drawable.sample1);
+        character.setValue(R.drawable.character_base);
         face.setValue(R.drawable.face_default);
         hat.setValue(0);
         clothes.setValue(0);

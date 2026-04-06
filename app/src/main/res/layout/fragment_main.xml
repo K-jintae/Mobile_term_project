@@ -66,7 +66,7 @@
         android:id="@+id/dimView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#99000000"
+        android:background="#66000000"
         android:visibility="gone" />
 
     <!-- 팝업창 -->
@@ -102,6 +102,15 @@
             android:layout_height="wrap_content"
             android:text="도움말"
             android:layout_marginTop="10dp" />
+
+        <Button
+            android:id="@+id/logoutBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E53935"
+            android:textColor="#FFFFFF"
+            android:text="로그아웃"
+            android:layout_marginTop="10dp"/>
 
         <Button
             android:id="@+id/btnClosePopup"
