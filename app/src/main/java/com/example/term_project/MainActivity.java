@@ -2,6 +2,7 @@ package com.example.term_project;
 
 import android.os.Bundle;
 import android.widget.TextView;
+import android.content.SharedPreferences;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
@@ -28,7 +29,11 @@ public class MainActivity extends AppCompatActivity {
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);   // 추가
 
-        tvPlayerName.setText("홍길동");
+        // 저장되어 있는 유저 닉네임 불러와서 표시
+        SharedPreferences prefs = getSharedPreferences("user", MODE_PRIVATE);
+        String nickname = prefs.getString("name", "기본닉네임");
+
+        tvPlayerName.setText(nickname);
         tvGold.setText("Gold: 1200");
         tvGem.setText("Gem: 35");
 
