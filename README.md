@@ -35,3 +35,107 @@
 전체적으로 db연동
 
 ### 캐릭터 상태변화에 맞게 메인도 반영되는 식으로 변경 게임창은 임시구현
+
+
+2026.04.07
+## 캐릭터 하단의 메세지창 + 상태마다 출력되는 메세지
+[XML 코드]
+ <!-- 메세지창 -->
+    <FrameLayout
+        android:id="@+id/msg_container"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="20dp"
+        android:background="#CCFFFFFF"
+        android:padding="15dp">
+
+        <TextView
+            android:id="@+id/tv_message"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="안녕! 잘 지냈어?!"
+            android:textColor="#000000"
+            android:textSize="16sp"
+            android:gravity="center"/>
+        </FrameLayout>
+
+[java 코드]
+ enum CharacterState{
+        NORMAL, HUNGRY, NEW_CLOTHES
+    }
+
+//해당 함수는 onCreate안에 있어야함
+updateMessage(CharacterState.NORMAL);
+
+//캐릭터가 말하는 메세지
+//해당 함수는 onCreate 밖에 생성
+//안에 담긴 HUNGRY, NEW_CLOTHES는 기능 구현해야함
+
+    private void updateMessage(CharacterState state){
+        String message = "";
+        Random random = new Random();
+
+        switch(state){
+            case NORMAL:
+                String[] normalMessage = {
+                        "안녕! 반가워!",
+                        "안녕~! 오늘 하루 잘 보냈어?",
+                        "안녕!! 보고싶었어!",
+                        "오늘도 좋은 하루!"
+                };
+                message = normalMessage[random.nextInt(normalMessage.length)];
+                break;
+
+            case HUNGRY: 
+                message = "나 배고파...";
+                break;
+            case NEW_CLOTHES:
+                String[] clothMessage = {
+                        "우와! 이거 멋있다!!",
+                        "나 이거 맘에 들어!"
+                };
+                message = clothMessage[random.nextInt(clothMessage.length)];
+                break;
+        }
+        tvMessage.setText(message);
+    }
+
+  ## 메인화면 왼쪽 상단에 위치한 코인 창
+  [XML 코드]
+  
+  <!-- coin -->
+        <LinearLayout
+            android:id="@+id/layout_coin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_coin_window"
+            android:paddingEnd="16dp"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_coins_stack"
+                android:layout_marginEnd="8dp" />
+
+        <TextView
+                android:id="@+id/tv_coin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="100"
+                android:textColor="#333333"
+                android:textStyle="bold"
+                android:textSize="18sp"/>
+        </LinearLayout>
+
+  [ java 코드]
+  //우선 고정된 값으로만 뒀음
+  //추후에 구매 시, 퀴즈 맞췄을 시, 코인의 계산 기능을 추가해야함
+   tvCoin.setText("100");
+   
