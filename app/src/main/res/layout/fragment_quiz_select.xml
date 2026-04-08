@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 퀴즈 선택 화면 -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/interior_hill">
+
+    <!-- 퀴즈 카드들을 세로로 쌓아둘 컨테이너 -->
+    <LinearLayout
+        android:id="@+id/quizContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp" />
+</ScrollView>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 퀴즈 카드 1개 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp"
+    android:background="#CCFFFFFF"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 퀴즈 제목 -->
+    <TextView
+        android:id="@+id/tvQuizTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="개념 초급"
+        android:textColor="#333333"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- 퀴즈 설명 -->
+    <TextView
+        android:id="@+id/tvQuizDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="기초 개념 문제를 풀어볼 수 있어요"
+        android:textColor="#555555"
+        android:textSize="16sp" />
+
+    <!-- 잠금 상태일 때 보여줄 텍스트 -->
+    <TextView
+        android:id="@+id/tvLock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="잠금"
+        android:textColor="#AA0000"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</LinearLayout>
