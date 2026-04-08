@@ -35,3 +35,102 @@
 전체적으로 db연동
 
 ### 캐릭터 상태변화에 맞게 메인도 반영되는 식으로 변경 게임창은 임시구현
+
+
+(2026.04.08-15:45)
+##캐릭터 메세지창 구현
+
+[XML 코드]
+ <!-- 메세지창 -->
+    <FrameLayout
+        android:id="@+id/msg_container"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="20dp"
+        android:background="#CCFFFFFF"
+        android:padding="15dp">
+
+        <TextView
+            android:id="@+id/tv_message"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="안녕! 잘 지냈어?!"
+            android:textColor="#000000"
+            android:textSize="16sp"
+            android:gravity="center"/>
+        </FrameLayout>
+
+  [java 코드]
+   tvMessage = findViewById(R.id.tv_message); //메세지창을 아이디를 통해 데려옴 --> onCreate() 함수 밖에 위치
+   updateMessage(CharacterState.NORMAL); //메세지를 실행함 --> onCreate()함수 안에 있어야함
+
+// 상태에 따라 출력되는 메세지가 다름 (메인화면일 때, 배고픈 상황일 때, 옷을 새로 구매할 때 --> 배고플 때, 새 옷 구매 시의 반응은 구현해야함)
+
+private void updateMessage(CharacterState state){  //onCreate() 함수 밖에 위치
+        String message = "";
+        Random random = new Random();
+
+        switch(state){
+            case NORMAL:
+                String[] normalMessage = {
+                        "안녕! 반가워!",
+                        "안녕~! 오늘 하루 잘 보냈어?",
+                        "안녕!! 보고싶었어!",
+                        "오늘도 좋은 하루!"
+                };
+                message = normalMessage[random.nextInt(normalMessage.length)];
+                break;
+
+            case HUNGRY:
+                message = "나 배고파...";
+                break;
+            case NEW_CLOTHES:
+                String[] clothMessage = {
+                        "우와! 이거 멋있다!!",
+                        "나 이거 맘에 들어!"
+                };
+                message = clothMessage[random.nextInt(clothMessage.length)];
+                break;
+        }
+        tvMessage.setText(message);
+    }
+
+##캐릭터 코인창 구현
+[XML 파일]
+<!-- coin -->
+ <LinearLayout
+            android:id="@+id/layout_coin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_coin_window"
+            android:paddingEnd="16dp"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_coins_stack"
+                android:layout_marginEnd="8dp" />
+
+        <TextView
+                android:id="@+id/tv_coin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="100"
+                android:textColor="#333333"
+                android:textStyle="bold"
+                android:textSize="18sp"/>
+        </LinearLayout>
+
+[java 코드]
+tvCoin = findViewById(R.id.tv_coin); // coin을 아이디로 가져옴.
+tvCoin.setText("100"); //코인의 텍스트를 우선 100으로 고정함
+
+--> 퀴즈를 풀거나 옷을 살 때 코인의 수가 바뀌는 것을 구현해야함
+
