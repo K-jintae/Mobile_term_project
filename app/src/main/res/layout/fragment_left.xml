@@ -4,13 +4,11 @@
     android:layout_height="match_parent"
     android:background="@drawable/interior_hill">
 
-    <!-- 배경 위에 살짝 어두운 오버레이 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#33000000" />
 
-    <!-- 퀴즈 목록 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -23,12 +21,10 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- 상단 상태바와 안 겹치게 여백 추가 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="90dp" />
 
-            <!-- 제목 -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -39,7 +35,6 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="20dp" />
 
-            <!-- 클릭 가능 1 -->
             <LinearLayout
                 android:id="@+id/cardQuiz1"
                 android:layout_width="match_parent"
@@ -69,7 +64,6 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <!-- 클릭 가능 2 -->
             <LinearLayout
                 android:id="@+id/cardQuiz2"
                 android:layout_width="match_parent"
@@ -99,7 +93,6 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <!-- 클릭 가능 3 -->
             <LinearLayout
                 android:id="@+id/cardQuiz3"
                 android:layout_width="match_parent"
@@ -129,7 +122,6 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <!-- 잠금 카드 1 -->
             <LinearLayout
                 android:id="@+id/cardLocked1"
                 android:layout_width="match_parent"
@@ -172,7 +164,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 잠금 카드 2 -->
             <LinearLayout
                 android:id="@+id/cardLocked2"
                 android:layout_width="match_parent"
