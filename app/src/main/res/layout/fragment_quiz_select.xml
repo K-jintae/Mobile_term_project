@@ -3,7 +3,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/interior_hill">
+    android:background="@drawable/background_hill">
 
     <!-- 퀴즈 카드들을 세로로 쌓아둘 컨테이너 -->
     <LinearLayout

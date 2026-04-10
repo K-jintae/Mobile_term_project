@@ -6,6 +6,19 @@
     android:layout_height="match_parent"
     android:background="#E6F0F2">
 
+    <ImageView
+        android:id="@+id/logoImage"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="58dp"
+        android:src="@drawable/logo"
+        android:contentDescription="로고"
+        android:adjustViewBounds="true"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
     <!-- 바깥 테두리 카드 -->
     <FrameLayout
         android:id="@+id/sceneCard"
@@ -39,7 +52,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:src="@drawable/interior_hill" />
+                android:src="@drawable/background_hill" />
 
             <!-- 캐릭터 레이어 묶음 -->
             <FrameLayout
@@ -156,7 +169,7 @@
             android:layout_marginBottom="20dp"
             android:text="설정"
             android:textColor="#2B2B2B"
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             android:elevation="6dp"/>
 
@@ -172,6 +185,7 @@
             android:paddingTop="14dp"
             android:paddingBottom="14dp"
             android:textAllCaps="false"
+            android:textSize="16sp"
             android:elevation="6dp"/>
 
         <androidx.appcompat.widget.AppCompatButton
@@ -187,6 +201,7 @@
             android:paddingTop="14dp"
             android:paddingBottom="14dp"
             android:textAllCaps="false"
+            android:textSize="16sp"
             android:elevation="6dp"/>
 
         <androidx.appcompat.widget.AppCompatButton
@@ -202,6 +217,7 @@
             android:paddingTop="14dp"
             android:paddingBottom="14dp"
             android:textAllCaps="false"
+            android:textSize="16sp"
             android:elevation="6dp"/>
 
         <androidx.appcompat.widget.AppCompatButton
@@ -217,6 +233,7 @@
             android:paddingTop="14dp"
             android:paddingBottom="14dp"
             android:textAllCaps="false"
+            android:textSize="16sp"
             android:elevation="6dp"/>
     </LinearLayout>
 

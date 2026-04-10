@@ -1,106 +1,295 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFE4E1">
+    android:background="#E6F0F2"
+    android:paddingTop="36dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+    <!-- 상단 프리뷰 카드 (메인화면 규칙과 동일) -->
+    <FrameLayout
+        android:id="@+id/top_area"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="36dp"
+        android:background="@drawable/bg_scene_card_border"
+        android:elevation="6dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintDimensionRatio="1:1">
 
+        <!-- 안쪽 실제 카드 -->
         <FrameLayout
-            android:id="@+id/top_area"
+            android:id="@+id/top_area_inner"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="#FFB6C1">
+            android:layout_height="match_parent"
+            android:layout_margin="2.5dp"
+            android:background="@drawable/bg_scene_card_inner"
+            android:clipToOutline="true"
+            android:outlineProvider="background">
 
+            <!-- 인테리어 배경 -->
             <ImageView
-                android:id="@+id/character_image"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:layout_gravity="center"
-                android:src="@drawable/character_base"
-                android:scaleType="fitCenter" />
-
-            <ImageView
-                android:id="@+id/clothes_image"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:layout_gravity="center"
-                android:scaleType="fitCenter" />
-
-            <ImageView
-                android:id="@+id/face_image"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:layout_gravity="center"
-                android:src="@drawable/face_default"
-                android:scaleType="fitCenter" />
-
-            <ImageView
-                android:id="@+id/hat_image"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:layout_gravity="center"
-                android:scaleType="fitCenter" />
-
-            <Button
-                android:id="@+id/btn_reset"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="top|end"
-                android:layout_margin="16dp"
-                android:text="초기화"
-                android:textSize="12sp"
-                android:backgroundTint="#88000000"
-                android:textColor="#FFFFFF" />
-        </FrameLayout>
-
-        <LinearLayout
-            android:id="@+id/bottom_area"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:background="#FFFFFF">
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="#DDDDDD"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="50dp"
-                    android:orientation="horizontal"
-                    android:showDividers="middle"
-                    android:divider="?android:attr/listDivider">
-
-                    <Button android:id="@+id/btn_all" style="?android:attr/borderlessButtonStyle" android:layout_width="100dp" android:layout_height="match_parent" android:text="전체" android:background="@android:color/white"/>
-                    <Button android:id="@+id/btn_face" style="?android:attr/borderlessButtonStyle" android:layout_width="100dp" android:layout_height="match_parent" android:text="표정" android:background="@android:color/white"/>
-                    <Button android:id="@+id/btn_hat" style="?android:attr/borderlessButtonStyle" android:layout_width="100dp" android:layout_height="match_parent" android:text="모자" android:background="@android:color/white"/>
-                    <Button android:id="@+id/btn_top" style="?android:attr/borderlessButtonStyle" android:layout_width="100dp" android:layout_height="match_parent" android:text="옷" android:background="@android:color/white"/>
-                </LinearLayout>
-            </HorizontalScrollView>
-
-            <ScrollView
+                android:id="@+id/bg_preview"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:fillViewport="true">
+                android:scaleType="centerCrop"
+                android:src="@drawable/background_hill" />
 
-                <GridLayout
-                    android:id="@+id/image_grid"
+            <!-- 캐릭터 프리뷰 -->
+            <FrameLayout
+                android:id="@+id/preview_character_container"
+                android:layout_width="220dp"
+                android:layout_height="220dp"
+                android:layout_gravity="center|bottom"
+                android:layout_marginBottom="22dp">
+
+                <ImageView
+                    android:id="@+id/character_image"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="3"
-                    android:padding="8dp"
-                    android:alignmentMode="alignMargins">
-                </GridLayout>
-            </ScrollView>
+                    android:layout_height="match_parent"
+                    android:src="@drawable/character_base"
+                    android:scaleType="fitCenter" />
 
-        </LinearLayout>
+                <ImageView
+                    android:id="@+id/clothes_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter" />
+
+                <ImageView
+                    android:id="@+id/face_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/face_default"
+                    android:scaleType="fitCenter" />
+
+                <ImageView
+                    android:id="@+id/hat_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter" />
+            </FrameLayout>
+
+            <!-- 초기화 버튼 -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_reset"
+                android:layout_width="60dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_circle_button"
+                android:backgroundTint="@null"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="초기화"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="14sp" />
+        </FrameLayout>
+    </FrameLayout>
+
+    <!-- 카테고리 버튼 -->
+    <LinearLayout
+        android:id="@+id/tab_bar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/top_area"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 전체 -->
+        <FrameLayout
+            android:id="@+id/tab_all_box"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_message_box">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_all"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:text="전체"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="18sp"
+                android:clickable="false"
+                android:focusable="false"/>
+        </FrameLayout>
+
+        <!-- 모자 -->
+        <FrameLayout
+            android:id="@+id/tab_hat_box"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_message_box">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_hat"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:text="모자"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="18sp"
+                android:clickable="false"
+                android:focusable="false"/>
+        </FrameLayout>
+
+        <!-- 옷 -->
+        <FrameLayout
+            android:id="@+id/tab_top_box"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_message_box">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_top"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:text="옷"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="18sp"
+                android:clickable="false"
+                android:focusable="false"/>
+        </FrameLayout>
+
+        <!-- 인테리어 -->
+        <FrameLayout
+            android:id="@+id/tab_interior_box"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_message_box">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_interior"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:text="배경"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="18sp"
+                android:clickable="false"
+                android:focusable="false"/>
+        </FrameLayout>
     </LinearLayout>
-</FrameLayout>
+
+    <!-- 아이템 영역 (스크롤 복구) -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/item_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="16dp"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls"
+        app:layout_constraintTop_toBottomOf="@id/tab_bar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <GridLayout
+            android:id="@+id/image_grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:alignmentMode="alignMargins"
+            android:paddingBottom="8dp" />
+    </androidx.core.widget.NestedScrollView>
+    <!-- 확인 팝업용 어두운 배경 -->
+    <View
+        android:id="@+id/confirmDimView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#66000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:elevation="20dp" />
+
+    <!-- 확인 팝업 -->
+    <LinearLayout
+        android:id="@+id/changeConfirmPopup"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_change_confirm_popup"
+        android:padding="20dp"
+        android:visibility="gone"
+        android:elevation="21dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvConfirmMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:gravity="center"
+            android:text="변경할까요?"
+            android:textColor="#2B2B2B"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnConfirmYes"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_confirm_yes"
+                android:backgroundTint="@null"
+                android:text="네"
+                android:textAllCaps="false"
+                android:textColor="#2B2B2B"
+                android:textSize="16sp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnConfirmNo"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_confirm_no"
+                android:backgroundTint="@null"
+                android:text="아니오"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

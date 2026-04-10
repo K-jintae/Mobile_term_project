@@ -4,201 +4,503 @@ import android.content.ClipData;
 import android.os.Bundle;
 import android.view.DragEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatButton;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider; // ViewModel 사용을 위한 import
+import androidx.lifecycle.ViewModelProvider;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class RightFragment extends Fragment {
 
-    // 아이템 목록이 들어갈 GridLayout
     private GridLayout imageGrid;
-
-    // 전체 Fragment에서 공유할 ViewModel
     private CharacterViewModel viewModel;
 
-    // 캐릭터 레이어 이미지들 (현재 화면 표시용)
-    private ImageView faceImage, hatImage, clothesImage;
+    private ImageView bgPreview;
+    private ImageView faceImage;
+    private ImageView hatImage;
+    private ImageView clothesImage;
 
-    // 표정 이미지 리스트
-    private List<Integer> faceList = Arrays.asList(
-            R.drawable.face_happy, R.drawable.face_sad, R.drawable.face_hungry
+    private AppCompatButton btnAll, btnHat, btnTop, btnInterior, btnReset;
+    private FrameLayout tabAllBox, tabHatBox, tabTopBox, tabInteriorBox;
+
+    // 확인 팝업용
+    private View confirmDimView;
+    private LinearLayout changeConfirmPopup;
+    private AppCompatButton btnConfirmYes, btnConfirmNo;
+
+    private int pendingResId = 0;
+    private boolean pendingIsInterior = false;
+
+    private static final int TAB_ALL = 0;
+    private static final int TAB_HAT = 1;
+    private static final int TAB_TOP = 2;
+    private static final int TAB_INTERIOR = 3;
+
+    private int currentTab = TAB_ALL;
+
+    private final List<DressItem> hatList = Arrays.asList(
+            new DressItem(R.drawable.thumb_hat_halloween, R.drawable.hat_halloween),
+            new DressItem(R.drawable.thumb_hat_hiphop, R.drawable.hat_hiphop),
+            new DressItem(R.drawable.thumb_hat_onepiece, R.drawable.hat_onepiece),
+            new DressItem(R.drawable.thumb_hat_crown, R.drawable.hat_crown),
+            new DressItem(R.drawable.thumb_hat_rabbit, R.drawable.hat_rabbit),
+            new DressItem(R.drawable.thumb_hat_pokemon, R.drawable.hat_pokemon),
+            new DressItem(R.drawable.thumb_hat_santa, R.drawable.hat_santa)
     );
 
-    // 모자 이미지 리스트
-    private List<Integer> hatList = Arrays.asList(
-            R.drawable.hat_halloween, R.drawable.hat_hiphop, R.drawable.hat_onepiece,
-            R.drawable.hat_crown, R.drawable.hat_rabbit
+    private final List<DressItem> clothesList = Arrays.asList(
+            new DressItem(R.drawable.thumb_clothes_halloween, R.drawable.clothes_halloween),
+            new DressItem(R.drawable.thumb_clothes_hiphop, R.drawable.clothes_hiphop),
+            new DressItem(R.drawable.thumb_clothes_onepiece, R.drawable.clothes_onepiece),
+            new DressItem(R.drawable.thumb_clothes_pokemon, R.drawable.clothes_pokemon),
+            new DressItem(R.drawable.thumb_clothes_santa, R.drawable.clothes_santa),
+            new DressItem(R.drawable.thumb_clothes_hoodie, R.drawable.clothes_hoodie),
+            new DressItem(R.drawable.thumb_clothes_poor, R.drawable.clothes_poor),
+            new DressItem(R.drawable.thumb_clothes_rabbit, R.drawable.clothes_rabbit)
     );
 
-    // 옷 이미지 리스트
-    private List<Integer> clothesList = Arrays.asList(
-            R.drawable.clothes_halloween, R.drawable.clothes_hiphop, R.drawable.clothes_onepiece,
-            R.drawable.clothes_pokemon, R.drawable.clothes_santa
+    private final List<Integer> interiorList = Arrays.asList(
+            R.drawable.background_hill,
+            R.drawable.background_room
     );
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_right, container, false);
-
-        // ViewModel 연결 (Activity 범위 공유)
-        // 다른 Fragment(MainFragment 등)와 같은 데이터를 사용하기 위함
         viewModel = new ViewModelProvider(requireActivity()).get(CharacterViewModel.class);
 
-        // 화면 요소 연결
         imageGrid = view.findViewById(R.id.image_grid);
+        bgPreview = view.findViewById(R.id.bg_preview);
         faceImage = view.findViewById(R.id.face_image);
         hatImage = view.findViewById(R.id.hat_image);
         clothesImage = view.findViewById(R.id.clothes_image);
 
         FrameLayout topArea = view.findViewById(R.id.top_area);
-        Button btnReset = view.findViewById(R.id.btn_reset);
 
-        // 드래그 후 캐릭터 영역에 드롭했을 때 처리
+        btnReset = view.findViewById(R.id.btn_reset);
+        btnAll = view.findViewById(R.id.btn_all);
+        btnHat = view.findViewById(R.id.btn_hat);
+        btnTop = view.findViewById(R.id.btn_top);
+        btnInterior = view.findViewById(R.id.btn_interior);
+
+        tabAllBox = view.findViewById(R.id.tab_all_box);
+        tabHatBox = view.findViewById(R.id.tab_hat_box);
+        tabTopBox = view.findViewById(R.id.tab_top_box);
+        tabInteriorBox = view.findViewById(R.id.tab_interior_box);
+
+        // 확인 팝업 연결
+        confirmDimView = view.findViewById(R.id.confirmDimView);
+        changeConfirmPopup = view.findViewById(R.id.changeConfirmPopup);
+        btnConfirmYes = view.findViewById(R.id.btnConfirmYes);
+        btnConfirmNo = view.findViewById(R.id.btnConfirmNo);
+
+        applyPressAnimation(btnReset);
+        applyPressAnimation(tabAllBox);
+        applyPressAnimation(tabHatBox);
+        applyPressAnimation(tabTopBox);
+        applyPressAnimation(tabInteriorBox);
+
         topArea.setOnDragListener((v, event) -> {
             if (event.getAction() == DragEvent.ACTION_DROP) {
-
-                // 드래그된 데이터 가져오기
                 ClipData.Item item = event.getClipData().getItemAt(0);
-
-                // 문자열 → int로 변환 (이미지 리소스 id)
                 int resId = Integer.parseInt(item.getText().toString());
-
-                // ViewModel에 값 반영
                 updateCharacter(resId);
             }
             return true;
         });
 
-        // 초기화 버튼
-        btnReset.setOnClickListener(v -> resetCharacter());
-
-        // 카테고리 버튼
-        view.findViewById(R.id.btn_all).setOnClickListener(v -> showImages(getAllImages()));
-        view.findViewById(R.id.btn_face).setOnClickListener(v -> showImages(faceList));
-        view.findViewById(R.id.btn_hat).setOnClickListener(v -> showImages(hatList));
-        view.findViewById(R.id.btn_top).setOnClickListener(v -> showImages(clothesList));
-
-        // 초기 상태 (전체 보기)
-        showImages(getAllImages());
-
-        // ===== ViewModel 상태 관찰 =====
-
-        // 얼굴 변경 감지
-        viewModel.getFace().observe(getViewLifecycleOwner(), resId -> {
-            faceImage.setImageResource(resId);
+        btnReset.setOnClickListener(v -> {
+            resetCharacter();
+            refreshCurrentTab();
         });
 
-        // 모자 변경 감지
-        viewModel.getHat().observe(getViewLifecycleOwner(), resId -> {
+        tabAllBox.setOnClickListener(v -> {
+            currentTab = TAB_ALL;
+            updateTabButtons();
+            showAllItems();
+        });
 
-            // 0이면 착용 안함 상태
+        tabHatBox.setOnClickListener(v -> {
+            currentTab = TAB_HAT;
+            updateTabButtons();
+            showDressItems(hatList);
+        });
+
+        tabTopBox.setOnClickListener(v -> {
+            currentTab = TAB_TOP;
+            updateTabButtons();
+            showDressItems(clothesList);
+        });
+
+        tabInteriorBox.setOnClickListener(v -> {
+            currentTab = TAB_INTERIOR;
+            updateTabButtons();
+            showInteriorItems(interiorList);
+        });
+
+        confirmDimView.setOnClickListener(v -> hideChangeConfirmPopup(null));
+
+        btnConfirmYes.setOnClickListener(v -> {
+            hideChangeConfirmPopup(() -> {
+                if (pendingIsInterior) {
+                    viewModel.setInterior(pendingResId);
+                } else {
+                    updateCharacter(pendingResId);
+                }
+            });
+        });
+
+        btnConfirmNo.setOnClickListener(v -> hideChangeConfirmPopup(null));
+
+        viewModel.getFace().observe(getViewLifecycleOwner(), resId -> {
+            if (resId != 0) {
+                faceImage.setImageResource(resId);
+            } else {
+                faceImage.setImageDrawable(null);
+            }
+        });
+
+        viewModel.getHat().observe(getViewLifecycleOwner(), resId -> {
             if (resId != 0) {
                 hatImage.setImageResource(resId);
             } else {
                 hatImage.setImageDrawable(null);
             }
+            refreshCurrentTab();
         });
 
-        // 옷 변경 감지
         viewModel.getClothes().observe(getViewLifecycleOwner(), resId -> {
-
             if (resId != 0) {
                 clothesImage.setImageResource(resId);
             } else {
                 clothesImage.setImageDrawable(null);
             }
+            refreshCurrentTab();
         });
+
+        viewModel.getInterior().observe(getViewLifecycleOwner(), resId -> {
+            bgPreview.setImageResource(resId);
+            refreshCurrentTab();
+        });
+
+        updateTabButtons();
+        showAllItems();
 
         return view;
     }
 
-    // 전체 이미지 리스트 생성
-    private List<Integer> getAllImages() {
-        List<Integer> all = new ArrayList<>();
-        all.addAll(faceList);
-        all.addAll(hatList);
-        all.addAll(clothesList);
-        return all;
+    private void showAllItems() {
+        if (imageGrid == null) return;
+        imageGrid.removeAllViews();
+
+        for (DressItem item : hatList) {
+            addDressTile(item);
+        }
+
+        for (DressItem item : clothesList) {
+            addDressTile(item);
+        }
+
+        for (int resId : interiorList) {
+            addInteriorTile(resId);
+        }
     }
 
-    // GridLayout에 이미지들을 동적으로 추가
-    private void showImages(List<Integer> imageList) {
-
+    private void showDressItems(List<DressItem> itemList) {
         if (imageGrid == null) return;
+        imageGrid.removeAllViews();
 
+        for (DressItem item : itemList) {
+            addDressTile(item);
+        }
+    }
+
+    private void showInteriorItems(List<Integer> imageList) {
+        if (imageGrid == null) return;
         imageGrid.removeAllViews();
 
         for (int resId : imageList) {
-
-            ImageView imageView = new ImageView(getContext());
-
-            imageView.setImageResource(resId);
-
-            // 태그에 리소스 ID 저장 (드래그 시 사용)
-            imageView.setTag(resId);
-
-            // 길게 눌렀을 때 드래그 시작
-            imageView.setOnLongClickListener(v -> {
-
-                // ViewPager 등 부모가 터치 이벤트 가로채지 못하게 함
-                v.getParent().requestDisallowInterceptTouchEvent(true);
-
-                ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
-
-                View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
-
-                v.startDragAndDrop(data, shadowBuilder, null, 0);
-
-                return true;
-            });
-
-            // GridLayout 배치 설정
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-
-            params.width = 0;
-            params.height = 350;
-            params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            params.setMargins(10, 10, 10, 10);
-
-            imageView.setLayoutParams(params);
-            imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-
-            imageGrid.addView(imageView);
+            addInteriorTile(resId);
         }
     }
 
-    // 드롭된 아이템을 ViewModel에 반영
+    private void addDressTile(DressItem item) {
+        boolean selected = isDressSelected(item.getApplyResId());
+        FrameLayout tile = createTile(selected);
+
+        ImageView imageView = new ImageView(requireContext());
+        imageView.setImageResource(item.getPreviewResId());
+        imageView.setTag(item.getApplyResId());
+        imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        imageView.setLayoutParams(imageParams);
+
+        imageView.setOnClickListener(v -> {
+            int resId = (int) v.getTag();
+            animateTileSelect(tile);
+            showChangeConfirmPopup(resId, false);
+        });
+
+        imageView.setOnLongClickListener(v -> {
+            ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
+            v.startDragAndDrop(data, shadowBuilder, null, 0);
+            return true;
+        });
+
+        tile.addView(imageView);
+        imageGrid.addView(tile);
+    }
+
+    private void addInteriorTile(int resId) {
+        boolean selected = isInteriorSelected(resId);
+        FrameLayout tile = createTile(selected);
+
+        ImageView imageView = new ImageView(requireContext());
+        imageView.setImageResource(resId);
+        imageView.setTag(resId);
+        imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        imageView.setLayoutParams(imageParams);
+
+        imageView.setOnClickListener(v -> {
+            int interiorResId = (int) v.getTag();
+            animateTileSelect(tile);
+            showChangeConfirmPopup(interiorResId, true);
+        });
+
+        imageView.setOnLongClickListener(v -> {
+            ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
+            v.startDragAndDrop(data, shadowBuilder, null, 0);
+            return true;
+        });
+
+        tile.addView(imageView);
+        imageGrid.addView(tile);
+    }
+
+    private FrameLayout createTile(boolean selected) {
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int outerPadding = dpToPx(24);
+        int itemMargin = dpToPx(10);
+        int totalMargins = itemMargin * 6;
+        int tileSize = (screenWidth - outerPadding - totalMargins) / 3;
+
+        FrameLayout tile = new FrameLayout(requireContext());
+        tile.setBackgroundResource(selected ? R.drawable.bg_item_tile_selected : R.drawable.bg_item_tile);
+
+        GridLayout.LayoutParams tileParams = new GridLayout.LayoutParams();
+        tileParams.width = tileSize;
+        tileParams.height = tileSize;
+        tileParams.setMargins(itemMargin, itemMargin, itemMargin, itemMargin);
+        tile.setLayoutParams(tileParams);
+
+        tile.setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10));
+        tile.setElevation(dpToPx(selected ? 6 : 4));
+
+        return tile;
+    }
+
+    private boolean isDressSelected(int applyResId) {
+        Integer currentHat = viewModel.getHat().getValue();
+        Integer currentClothes = viewModel.getClothes().getValue();
+
+        return (currentHat != null && currentHat == applyResId)
+                || (currentClothes != null && currentClothes == applyResId);
+    }
+
+    private boolean isInteriorSelected(int resId) {
+        Integer currentInterior = viewModel.getInterior().getValue();
+        return currentInterior != null && currentInterior == resId;
+    }
+
     private void updateCharacter(int resId) {
-
-        // 어떤 종류인지 판단해서 ViewModel에 저장
-
-        if (faceList.contains(resId)) {
-            viewModel.setFace(resId);
-
-        } else if (hatList.contains(resId)) {
+        if (containsApplyResId(hatList, resId)) {
             viewModel.setHat(resId);
-
-        } else if (clothesList.contains(resId)) {
+        } else if (containsApplyResId(clothesList, resId)) {
             viewModel.setClothes(resId);
+        } else if (interiorList.contains(resId)) {
+            viewModel.setInterior(resId);
         }
     }
 
-    // 캐릭터 초기화
+    private boolean containsApplyResId(List<DressItem> itemList, int resId) {
+        for (DressItem item : itemList) {
+            if (item.getApplyResId() == resId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void resetCharacter() {
         viewModel.reset();
+    }
+
+    private void refreshCurrentTab() {
+        if (imageGrid == null) return;
+
+        switch (currentTab) {
+            case TAB_HAT:
+                showDressItems(hatList);
+                break;
+            case TAB_TOP:
+                showDressItems(clothesList);
+                break;
+            case TAB_INTERIOR:
+                showInteriorItems(interiorList);
+                break;
+            case TAB_ALL:
+            default:
+                showAllItems();
+                break;
+        }
+    }
+
+    private void updateTabButtons() {
+        styleTab(tabAllBox, currentTab == TAB_ALL);
+        styleTab(tabHatBox, currentTab == TAB_HAT);
+        styleTab(tabTopBox, currentTab == TAB_TOP);
+        styleTab(tabInteriorBox, currentTab == TAB_INTERIOR);
+    }
+
+    private void styleTab(FrameLayout box, boolean selected) {
+        if (selected) {
+            box.setBackgroundResource(R.drawable.bg_message_box_selected);
+            box.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(120)
+                    .start();
+        } else {
+            box.setBackgroundResource(R.drawable.bg_message_box);
+            box.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(120)
+                    .start();
+        }
+    }
+
+    private void animateTileSelect(View tile) {
+        tile.animate()
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(90)
+                .withEndAction(() -> tile.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(90)
+                        .start())
+                .start();
+    }
+
+    private void applyPressAnimation(View view) {
+        view.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.animate()
+                            .scaleX(0.96f)
+                            .scaleY(0.96f)
+                            .setDuration(80)
+                            .start();
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    v.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(80)
+                            .start();
+                    break;
+            }
+            return false;
+        });
+    }
+
+    private int dpToPx(int dp) {
+        float density = requireContext().getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
+    }
+
+    private void showChangeConfirmPopup(int resId, boolean isInterior) {
+        pendingResId = resId;
+        pendingIsInterior = isInterior;
+
+        confirmDimView.setAlpha(0f);
+        confirmDimView.setVisibility(View.VISIBLE);
+        confirmDimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        changeConfirmPopup.setVisibility(View.VISIBLE);
+        changeConfirmPopup.setAlpha(0f);
+        changeConfirmPopup.setScaleX(0.88f);
+        changeConfirmPopup.setScaleY(0.88f);
+        changeConfirmPopup.setTranslationY(20f);
+
+        changeConfirmPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void hideChangeConfirmPopup(Runnable endAction) {
+        confirmDimView.animate()
+                .alpha(0f)
+                .setDuration(160)
+                .withEndAction(() -> {
+                    confirmDimView.setVisibility(View.GONE);
+                    confirmDimView.setAlpha(1f);
+                })
+                .start();
+
+        changeConfirmPopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    changeConfirmPopup.setVisibility(View.GONE);
+                    changeConfirmPopup.setAlpha(1f);
+                    changeConfirmPopup.setScaleX(1f);
+                    changeConfirmPopup.setScaleY(1f);
+                    changeConfirmPopup.setTranslationY(0f);
+
+                    if (endAction != null) {
+                        endAction.run();
+                    }
+                })
+                .start();
     }
 }

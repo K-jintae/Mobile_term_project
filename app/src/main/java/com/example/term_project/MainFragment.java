@@ -1,42 +1,40 @@
 package com.example.term_project;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import java.util.Random;
 
 public class MainFragment extends Fragment {
 
-    // 기본 캐릭터
     private ImageView characterImage;
-
-    // 꾸미기 레이어
     private ImageView clothesImage;
     private ImageView faceImage;
     private ImageView hatImage;
+    private ImageView bgInterior;
 
-    // 말풍선 텍스트
     private TextView tvMessage;
 
-    // ViewModel
     private CharacterViewModel viewModel;
 
-    // 캐릭터 상태
+    private View dimView;
+    private LinearLayout settingsPopup;
+
     enum CharacterState {
         NORMAL,
         HUNGRY,
@@ -44,7 +42,6 @@ public class MainFragment extends Fragment {
     }
 
     public MainFragment() {
-        // 필수 생성자
     }
 
     @Override
@@ -53,24 +50,34 @@ public class MainFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
-        // 이미지 연결
+        bgInterior = view.findViewById(R.id.bgInterior);
         characterImage = view.findViewById(R.id.characterImage);
         clothesImage = view.findViewById(R.id.clothes_image);
         faceImage = view.findViewById(R.id.face_image);
         hatImage = view.findViewById(R.id.hat_image);
-
-        // 말풍선 연결
         tvMessage = view.findViewById(R.id.tv_message);
 
-        // ViewModel 연결 (Activity 공유)
+        ImageButton btnSettings = view.findViewById(R.id.btnSettings);
+        dimView = view.findViewById(R.id.dimView);
+        settingsPopup = view.findViewById(R.id.settingsPopup);
+
+        Button btnSound = view.findViewById(R.id.btnSound);
+        Button btnHelp = view.findViewById(R.id.btnHelp);
+        Button btnClosePopup = view.findViewById(R.id.btnClosePopup);
+        Button logoutBtn = view.findViewById(R.id.logoutBtn);
+
+        applyPressAnimation(btnSettings);
+
         viewModel = new ViewModelProvider(requireActivity()).get(CharacterViewModel.class);
 
-        // 캐릭터 몸체
+        viewModel.getInterior().observe(getViewLifecycleOwner(), resId -> {
+            bgInterior.setImageResource(resId);
+        });
+
         viewModel.getCharacter().observe(getViewLifecycleOwner(), resId -> {
             characterImage.setImageResource(resId);
         });
 
-        // 얼굴
         viewModel.getFace().observe(getViewLifecycleOwner(), resId -> {
             if (resId != 0) {
                 faceImage.setImageResource(resId);
@@ -79,7 +86,6 @@ public class MainFragment extends Fragment {
             }
         });
 
-        // 모자
         viewModel.getHat().observe(getViewLifecycleOwner(), resId -> {
             if (resId != 0) {
                 hatImage.setImageResource(resId);
@@ -88,76 +94,44 @@ public class MainFragment extends Fragment {
             }
         });
 
-        // 옷
         viewModel.getClothes().observe(getViewLifecycleOwner(), resId -> {
             if (resId != 0) {
                 clothesImage.setImageResource(resId);
-
-                // 옷이 바뀌었을 때 메세지 출력
                 updateMessage(CharacterState.NEW_CLOTHES);
             } else {
                 clothesImage.setImageDrawable(null);
             }
         });
 
-        // 처음 화면 들어왔을 때 기본 메세지 출력
         updateMessage(CharacterState.NORMAL);
 
-        // 설정 UI
-        ImageButton btnSettings = view.findViewById(R.id.btnSettings);
-        View dimView = view.findViewById(R.id.dimView);
-        LinearLayout settingsPopup = view.findViewById(R.id.settingsPopup);
+        btnSettings.setOnClickListener(v -> showSettingsPopup());
 
-        Button btnSound = view.findViewById(R.id.btnSound);
-        Button btnHelp = view.findViewById(R.id.btnHelp);
-        Button btnClosePopup = view.findViewById(R.id.btnClosePopup);
-        Button logoutBtn = view.findViewById(R.id.logoutBtn);
-
-        // 설정 열기
-        btnSettings.setOnClickListener(v -> {
-            dimView.setVisibility(View.VISIBLE);
-            settingsPopup.setVisibility(View.VISIBLE);
-        });
-
-        // 로그아웃 버튼(팝업으로 한 번 더 확인 후 로그아웃)
         logoutBtn.setOnClickListener(v -> {
             new AlertDialog.Builder(requireContext())
                     .setTitle("로그아웃")
                     .setMessage("정말 로그아웃 하시겠습니까?")
                     .setPositiveButton("예", (dialog, which) -> {
+                        hideSettingsPopup(() -> {
+                            SharedPreferences pref = requireActivity()
+                                    .getSharedPreferences("user", requireContext().MODE_PRIVATE);
+                            SharedPreferences.Editor editor = pref.edit();
+                            editor.putBoolean("isLogin", false);
+                            editor.apply();
 
-                        // 자동으로 팝업 닫고 로그아웃
-                        dimView.setVisibility(View.GONE);
-                        settingsPopup.setVisibility(View.GONE);
-
-                        SharedPreferences pref = requireActivity()
-                                .getSharedPreferences("user", getContext().MODE_PRIVATE);
-                        SharedPreferences.Editor editor = pref.edit();
-
-                        editor.putBoolean("isLogin", false);
-                        editor.apply();
-
-                        Intent intent = new Intent(getActivity(), LoginActivity.class);
-                        startActivity(intent);
-                        requireActivity().finish();
+                            Intent intent = new Intent(getActivity(), LoginActivity.class);
+                            startActivity(intent);
+                            requireActivity().finish();
+                        });
                     })
                     .setNegativeButton("아니오", null)
                     .show();
         });
 
-        // 닫기 버튼
-        btnClosePopup.setOnClickListener(v -> {
-            dimView.setVisibility(View.GONE);
-            settingsPopup.setVisibility(View.GONE);
-        });
+        btnClosePopup.setOnClickListener(v -> hideSettingsPopup(null));
 
-        // 바깥 클릭 닫기
-        dimView.setOnClickListener(v -> {
-            dimView.setVisibility(View.GONE);
-            settingsPopup.setVisibility(View.GONE);
-        });
+        dimView.setOnClickListener(v -> hideSettingsPopup(null));
 
-        // 테스트 기능
         btnSound.setOnClickListener(v ->
                 Toast.makeText(getActivity(), "소리 설정", Toast.LENGTH_SHORT).show());
 
@@ -167,7 +141,83 @@ public class MainFragment extends Fragment {
         return view;
     }
 
-    // 캐릭터 상태에 따라 말풍선 메세지 변경
+    private void applyPressAnimation(View view) {
+        view.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.animate()
+                            .scaleX(0.92f)
+                            .scaleY(0.92f)
+                            .setDuration(80)
+                            .start();
+                    break;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    v.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(80)
+                            .start();
+                    break;
+            }
+            return false;
+        });
+    }
+
+    private void showSettingsPopup() {
+        dimView.setAlpha(0f);
+        dimView.setVisibility(View.VISIBLE);
+        dimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        settingsPopup.setVisibility(View.VISIBLE);
+        settingsPopup.setAlpha(0f);
+        settingsPopup.setScaleX(0.88f);
+        settingsPopup.setScaleY(0.88f);
+        settingsPopup.setTranslationY(20f);
+
+        settingsPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void hideSettingsPopup(Runnable endAction) {
+        dimView.animate()
+                .alpha(0f)
+                .setDuration(160)
+                .withEndAction(() -> {
+                    dimView.setVisibility(View.GONE);
+                    dimView.setAlpha(1f);
+                })
+                .start();
+
+        settingsPopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    settingsPopup.setVisibility(View.GONE);
+                    settingsPopup.setAlpha(1f);
+                    settingsPopup.setScaleX(1f);
+                    settingsPopup.setScaleY(1f);
+                    settingsPopup.setTranslationY(0f);
+
+                    if (endAction != null) {
+                        endAction.run();
+                    }
+                })
+                .start();
+    }
+
     private void updateMessage(CharacterState state) {
         String message = "";
         Random random = new Random();
