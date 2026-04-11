@@ -16,6 +16,10 @@ import android.widget.Toast;
 // 실제 문제를 푸는 Fragment
 public class QuizPlayFragment extends Fragment {
 
+    //정답/오답을 보여줄 변수
+    private com.airbnb.lottie.LottieAnimationView lottieEffect; //lottie effect를 사용하기 위해 데려옴
+    private View layoutResult; //lottie effect 자체가 원래 화면에 레이어 쌓는 것
+    private TextView tvResultStatus;
     // 문제 문장을 보여줄 TextView
     private TextView tvQuestion;
 
@@ -53,6 +57,11 @@ public class QuizPlayFragment extends Fragment {
         option3 = view.findViewById(R.id.option3);
         option4 = view.findViewById(R.id.option4);
         btnSubmit = view.findViewById(R.id.btnSubmit);
+        lottieEffect = view.findViewById(R.id.lottieEffect);
+        layoutResult = view.findViewById(R.id.layoutResult);
+        tvResultStatus = view.findViewById(R.id.tvResultStatus);
+
+
 
         // Repository 생성
         repository = new QuizRepository();
@@ -72,6 +81,25 @@ public class QuizPlayFragment extends Fragment {
         btnSubmit.setOnClickListener(v -> checkAnswer());
 
         return view;
+    }
+
+    // lottie files에서 받아온 이펙트 사용
+    private void playEffect(int rawResId, String statusText){
+        layoutResult.setVisibility(View.VISIBLE);
+        tvResultStatus.setText(statusText);
+
+        lottieEffect.setAnimation(rawResId);
+        lottieEffect.playAnimation();
+
+        lottieEffect.addAnimatorListener(new android.animation.Animator.AnimatorListener() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation){
+                layoutResult.postDelayed(() -> layoutResult.setVisibility(View.GONE), 500);
+            }
+            @Override public void onAnimationStart(android.animation.Animator animation) {}
+            @Override public void onAnimationCancel(android.animation.Animator animation){}
+            @Override public void onAnimationRepeat(android.animation.Animator animation){}
+        });
     }
 
     // 문제 객체의 내용을 화면에 표시하는 함수
@@ -117,14 +145,14 @@ public class QuizPlayFragment extends Fragment {
 
         // 사용자가 고른 답과 실제 정답 비교
         if (selectedIndex == currentQuestion.getCorrectAnswerIndex()) {
-            Toast.makeText(getContext(), "정답입니다!", Toast.LENGTH_SHORT).show();
+            playEffect(R.raw.success, "정답입니다!");
 
             // 나중에 여기에 코인 지급, 문제 해금, 다음 문제 이동 같은 기능 추가 가능
             // 예: addCoin(10);
             // 예: unlockNextQuiz();
 
         } else {
-            Toast.makeText(getContext(), "오답입니다.", Toast.LENGTH_SHORT).show();
+            playEffect(R.raw.fail, "오답입니다");
         }
     }
 }
