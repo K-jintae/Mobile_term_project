@@ -11,6 +11,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -25,10 +35,18 @@ public class LoginActivity extends AppCompatActivity {
     boolean isIdChecked = false;
     String checkedId = "";
 
+    private FirebaseAuth mAuth;
+    private GoogleSignInClient mGoogleSignInClient;
+    private static final int RC_SIGN_IN = 9001; // 로그인 요청 코드
+    private TextView signupError;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        mAuth = FirebaseAuth.getInstance();
+        signupError = findViewById(R.id.signupError);
 
         pref = getSharedPreferences("user", MODE_PRIVATE);
 
@@ -57,7 +75,6 @@ public class LoginActivity extends AppCompatActivity {
 
         loginBtn = findViewById(R.id.loginBtn);
         goSignupBtn = findViewById(R.id.goSignupBtn);
-        signupBtn = findViewById(R.id.signupBtn);
         backBtn = findViewById(R.id.backBtn);
 
         // 회원가입 화면 열기

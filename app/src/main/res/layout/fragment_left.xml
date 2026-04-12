@@ -3,28 +3,23 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/background_hill">
-
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#33000000" />
-
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
         android:paddingBottom="20dp">
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-
             <View
                 android:layout_width="match_parent"
                 android:layout_height="90dp" />
-
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -46,16 +41,16 @@
                 android:background="#B3FFFFFF"
                 android:clickable="true"
                 android:focusable="true">
-
                 <TextView
+                    android:id="@+id/tvQuizTitle1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="개념 초급"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="#222222" />
-
                 <TextView
+                    android:id="@+id/tvQuizDesc1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="기초 개념 문제를 풀어볼 수 있어요"
@@ -75,16 +70,16 @@
                 android:background="#B3FFFFFF"
                 android:clickable="true"
                 android:focusable="true">
-
                 <TextView
+                    android:id="@+id/tvQuizTitle2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="개념 중급"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="#222222" />
-
                 <TextView
+                    android:id="@+id/tvQuizDesc2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="조금 더 어려운 문제를 풀어볼 수 있어요"
@@ -104,16 +99,16 @@
                 android:background="#B3FFFFFF"
                 android:clickable="true"
                 android:focusable="true">
-
                 <TextView
+                    android:id="@+id/tvQuizTitle3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="개념 고급"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="#222222" />
-
                 <TextView
+                    android:id="@+id/tvQuizDesc3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="심화 문제를 풀어볼 수 있어요"
@@ -133,28 +128,26 @@
                 android:background="#88999999"
                 android:clickable="true"
                 android:focusable="true">
-
                 <ImageView
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:src="@android:drawable/ic_lock_lock"
                     android:contentDescription="잠금 아이콘" />
-
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
                     android:orientation="vertical">
-
                     <TextView
+                        android:id="@+id/tvQuizTitle4"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="실전 문제 1"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF" />
-
                     <TextView
+                        android:id="@+id/tvQuizDesc4"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="개념 중급 클리어 후 해금"
@@ -175,28 +168,26 @@
                 android:background="#88999999"
                 android:clickable="true"
                 android:focusable="true">
-
                 <ImageView
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:src="@android:drawable/ic_lock_lock"
                     android:contentDescription="잠금 아이콘" />
-
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
                     android:orientation="vertical">
-
                     <TextView
+                        android:id="@+id/tvQuizTitle5"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="실전 문제 2"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF" />
-
                     <TextView
+                        android:id="@+id/tvQuizDesc5"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="개념 중급 클리어 후 해금"
@@ -205,8 +196,6 @@
                         android:layout_marginTop="4dp" />
                 </LinearLayout>
             </LinearLayout>
-
         </LinearLayout>
     </ScrollView>
-
 </FrameLayout>

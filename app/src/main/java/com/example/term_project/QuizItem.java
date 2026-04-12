@@ -4,13 +4,13 @@ public class QuizItem {
     private int id;
     private String title;
     private String description;
-    private boolean unlocked;
+    private int requiredGold;
 
-    public QuizItem(int id, String title, String description, boolean unlocked) {
+    public QuizItem(int id, String title, String description, int requiredGold) {
         this.id = id;
         this.title = title;
         this.description = description;
-        this.unlocked = unlocked;
+        this.requiredGold = requiredGold;
     }
 
     public int getId() {
@@ -25,7 +25,7 @@ public class QuizItem {
         return description;
     }
 
-    public boolean isUnlocked() {
-        return unlocked;
+    public int getRequiredGold() {
+        return requiredGold;
     }
 }

@@ -7,7 +7,6 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
 
-    <!-- 로그인 화면 -->
     <LinearLayout
         android:id="@+id/loginLayout"
         android:layout_width="match_parent"
@@ -15,12 +14,10 @@
         android:gravity="center"
         android:orientation="vertical"
         android:padding="24dp">
-       <!-- 로고와 개인정보 입력창의 비율을 위해 사용 -->
         <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.3"/>
-<!-- 로그인창에 로고 삽입 -->
         <ImageView
             android:id="@+id/iv_logo"
             android:layout_width="300dp"
@@ -28,7 +25,6 @@
             android:layout_marginBottom="5dp"
             android:src="@drawable/logo" />
 
-        <!-- 로그인 화면 박스 설정 -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,7 +36,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="20dp">
-                <!-- 아이디 박스 이펙트 설정-->
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -49,16 +44,15 @@
                     app:boxStrokeColor="#000000"
                     app:hintTextColor="#000000"
                     app:hintEnabled="true">
-        <EditText
-            android:id="@+id/idInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="아이디"
-            android:textColor="#000000"
-            android:inputType="textVisiblePassword"
-            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"/>
+                    <EditText
+                        android:id="@+id/idInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="아이디"
+                        android:textColor="#000000"
+                        android:inputType="textVisiblePassword"
+                        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"/>
                 </com.google.android.material.textfield.TextInputLayout>
-            <!-- 비밀번호 박스 이펙트 설정 -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -71,42 +65,41 @@
                     app:passwordToggleEnabled="true"
                     app:passwordToggleTint="@color/black"
                     >
-        <EditText
-            android:id="@+id/pwInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="비밀번호"
-            android:textColor="#000000"
-            android:inputType="textPassword"
-            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"/>
+                    <EditText
+                        android:id="@+id/pwInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="비밀번호"
+                        android:textColor="#000000"
+                        android:inputType="textPassword"
+                        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
-        <Button
-            android:id="@+id/loginBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="로그인"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#E57373"/>
+                <Button
+                    android:id="@+id/loginBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="로그인"
+                    android:textColor="#FFFFFF"
+                    app:backgroundTint="#E57373"/>
 
-        <Button
-            android:id="@+id/goSignupBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/black"
-            android:text="회원가입"
-            android:textColor="#FFFFFF"/>
+                <Button
+                    android:id="@+id/goSignupBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="@color/black"
+                    android:text="회원가입"
+                    android:textColor="#FFFFFF"/>
 
-        <TextView
-            android:id="@+id/loginError"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#FF0000"
-            android:visibility="gone" />
+                <TextView
+                    android:id="@+id/loginError"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FF0000"
+                    android:visibility="gone" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-        
-        <!-- 로그인창과 로고창의 비율을 위해 사용 -->
+
         <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -114,7 +107,6 @@
     </LinearLayout>
 
 
-    <!-- 회원가입 overlay -->
     <LinearLayout
         android:id="@+id/signupLayout"
         android:layout_width="match_parent"
@@ -123,7 +115,6 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <!-- Back 버튼 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -139,8 +130,6 @@
 
         </LinearLayout>
 
-        <!-- 중앙 입력 영역 -->
-        <!--키보드에 가려지지 않도록 200dp margin 줌-->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -197,7 +186,6 @@
                 android:textColor="#FF0000"
                 android:visibility="gone" />
 
-            <!--  닉네임 추가 -->
             <EditText
                 android:id="@+id/signupName"
                 android:layout_width="match_parent"
@@ -214,14 +202,13 @@
                 android:textColor="#FF0000"
                 android:visibility="gone" />
 
-            <!-- 에러 메시지: id, pw 에러 따로 구분해서 사용 안함(혹시 몰라서 남겨둠)
             <TextView
                 android:id="@+id/signupError"
                 android:textColor="#FF0000"
                 android:visibility="gone"
                 android:layout_marginTop="8dp"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>-->
+                android:layout_height="wrap_content"/>
 
             <Button
                 android:id="@+id/signupBtn"
@@ -233,6 +220,30 @@
                 android:text="회원가입 완료" />
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="20dp"
+        android:layout_marginBottom="50dp">
+
+        <com.google.android.gms.common.SignInButton
+            android:id="@+id/googleLoginBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/googleLoginError"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FF0000"
+            android:textSize="12sp" />
 
     </LinearLayout>
 </FrameLayout>
