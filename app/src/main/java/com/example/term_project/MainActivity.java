@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
+import android.media.MediaPlayer;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,6 +23,9 @@ public class MainActivity extends AppCompatActivity {
 
     // activity_main.xml에 추가한 overlay용 컨테이너
     private View fragmentContainer;
+
+    // 음악
+    private MediaPlayer mediaPlayer;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
@@ -46,6 +50,13 @@ public class MainActivity extends AppCompatActivity {
         // ViewPager 설정
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);
+
+        //배경음악 재생
+        mediaPlayer = MediaPlayer.create(this, R.raw.chestnut_cookie);
+        if(mediaPlayer != null){
+            mediaPlayer.setLooping(true);//반복
+            mediaPlayer.start();//시작
+        }
 
         // 로그인 유저 설정 불러오기
         if (mAuth.getCurrentUser() != null) {
@@ -96,6 +107,36 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+
+    //음악 제어
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 앱이 백그라운드로 가면 음악 일시정지
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 앱으로 다시 돌아오면 음악 재시작
+        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+            mediaPlayer.start();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 앱 종료 시 자원 해제
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
     }
     public void updateUserGold(int amount) {
         // 1. 로컬 변수(내 지갑) 업데이트
