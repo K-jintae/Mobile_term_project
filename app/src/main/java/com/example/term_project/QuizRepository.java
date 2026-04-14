@@ -1,58 +1,118 @@
 package com.example.term_project;
 
-import java.util.ArrayList;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.List;
 
 public class QuizRepository {
 
-    public List<QuizItem> getQuizList() {
-        List<QuizItem> quizList = new ArrayList<>();
+    private FirebaseFirestore db;
 
-        quizList.add(new QuizItem(1, "개념 초급", "기초 개념 문제를 풀어볼 수 있어요", true));
-        quizList.add(new QuizItem(2, "개념 중급", "조금 더 어려운 문제를 풀어볼 수 있어요", true));
-        quizList.add(new QuizItem(3, "개념 고급", "심화 문제를 풀어볼 수 있어요", true));
-        quizList.add(new QuizItem(4, "실전 문제 1", "개념 중급 클리어 후 해금", false));
-        quizList.add(new QuizItem(5, "실전 문제 2", "개념 중급 클리어 후 해금", false));
+    // db 구조 파악
+    private final String ROOT_COLLECTION = "subjects";
+    private final String SUB_COLLECTION = "quizzes";
 
-        return quizList;
+    public QuizRepository() {
+        db = FirebaseFirestore.getInstance();
     }
 
-    public QuizQuestion getQuestionByQuizId(int quizId) {
-        if (quizId == 1) {
-            return new QuizQuestion(
-                    1,
-                    "다음 중 운영체제의 역할로 가장 적절한 것은?",
-                    new String[]{"하드웨어 제어", "그림 그리기", "영상 편집", "프린터 제조"},
-                    0
-            );
-        } else if (quizId == 2) {
-            return new QuizQuestion(
-                    2,
-                    "자료구조 중 FIFO 방식은 무엇인가?",
-                    new String[]{"스택", "큐", "트리", "그래프"},
-                    1
-            );
-        } else if (quizId == 3) {
-            return new QuizQuestion(
-                    3,
-                    "컴파일러의 역할은 무엇인가?",
-                    new String[]{"소스코드를 기계어로 번역", "인터넷 연결", "이미지 확대", "문서 출력"},
-                    0
-            );
-        } else if (quizId == 4) {
-            return new QuizQuestion(
-                    4,
-                    "다음 중 네트워크 계층에 해당하는 것은?",
-                    new String[]{"Transport", "Network", "Session", "Presentation"},
-                    1
-            );
+    public interface OnQuestionFetchedListener {
+        void onSuccess(QuizQuestion question);
+        void onFailure(Exception e);
+    }
+
+    // 과목 번호와 문제 번호로 문제 찾기
+    public void getQuizQuestionFromFirestore(int subjectId, int questionId, OnQuestionFetchedListener listener) {
+        db.collection(ROOT_COLLECTION)
+                .whereEqualTo("subject_id", subjectId)
+                .get()
+                .addOnSuccessListener(subjectDocs -> {
+                    if (!subjectDocs.isEmpty()) {
+                        DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
+                        subjectDoc.getReference().collection(SUB_COLLECTION)
+                                .whereEqualTo("quiz_id", questionId)
+                                .get()
+                                .addOnSuccessListener(quizDocs -> {
+                                    if (!quizDocs.isEmpty()) {
+                                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
+                                    } else {
+                                        tryStringQuizId(subjectDoc, subjectId, questionId, listener);
+                                    }
+                                })
+                                .addOnFailureListener(e -> listener.onFailure(new Exception("문제 상자 읽기 실패: " + e.getMessage())));
+                    } else {
+                        tryStringSubjectId(subjectId, questionId, listener);
+                    }
+                })
+                .addOnFailureListener(e -> listener.onFailure(new Exception("과목 상자 읽기 실패: " + e.getMessage())));
+    }
+
+    private void tryStringQuizId(DocumentSnapshot subjectDoc, int subjectId, int questionId, OnQuestionFetchedListener listener) {
+        subjectDoc.getReference().collection(SUB_COLLECTION)
+                .whereEqualTo("quiz_id", String.valueOf(questionId))
+                .get()
+                .addOnSuccessListener(quizDocs -> {
+                    if (!quizDocs.isEmpty()) {
+                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
+                    } else {
+                        listener.onFailure(new Exception("문제 번호(" + questionId + ")를 찾을 수 없습니다."));
+                    }
+                })
+                .addOnFailureListener(e -> listener.onFailure(new Exception("문제 상자 읽기 실패: " + e.getMessage())));
+    }
+
+    private void tryStringSubjectId(int subjectId, int questionId, OnQuestionFetchedListener listener) {
+        db.collection(ROOT_COLLECTION)
+                .whereEqualTo("subject_id", String.valueOf(subjectId))
+                .get()
+                .addOnSuccessListener(subjectDocs -> {
+                    if (!subjectDocs.isEmpty()) {
+                        DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
+                        subjectDoc.getReference().collection(SUB_COLLECTION)
+                                .whereEqualTo("quiz_id", questionId)
+                                .get()
+                                .addOnSuccessListener(quizDocs -> {
+                                    if (!quizDocs.isEmpty()) {
+                                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
+                                    } else {
+                                        tryStringQuizId(subjectDoc, subjectId, questionId, listener);
+                                    }
+                                });
+                    } else {
+                        listener.onFailure(new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다."));
+                    }
+                })
+                .addOnFailureListener(e -> listener.onFailure(new Exception("과목 상자 읽기 실패: " + e.getMessage())));
+    }
+
+    // 오류 방지용 코드
+    @SuppressWarnings("unchecked")
+    private void parseAndSend(DocumentSnapshot doc, int subjectId, OnQuestionFetchedListener listener) {
+        String questionText = doc.getString("question");
+
+        List<String> optionsList = null;
+        Object optionsObj = doc.get("answer_choice");
+        if (optionsObj instanceof List) {
+            optionsList = (List<String>) optionsObj;
+        }
+
+        int answerIndex = 0;
+        Object correctObj = doc.get("answer_correct");
+        if (correctObj instanceof Number) {
+            answerIndex = ((Number) correctObj).intValue();
+        } else if (correctObj instanceof String) {
+            try { answerIndex = Integer.parseInt((String) correctObj); } catch (Exception ignored) {}
+        }
+
+        if (questionText != null && optionsList != null) {
+            String[] options = optionsList.toArray(new String[0]);
+            String difficulty = doc.getString("difficulty_level");
+            String diff = (difficulty != null) ? difficulty : "easy";
+
+            QuizQuestion question = new QuizQuestion(subjectId, questionText, options, answerIndex, diff);
+            listener.onSuccess(question);
         } else {
-            return new QuizQuestion(
-                    5,
-                    "다음 중 DBMS의 기능이 아닌 것은?",
-                    new String[]{"데이터 저장", "데이터 관리", "질의 처리", "모니터 생산"},
-                    3
-            );
+            listener.onFailure(new Exception("question 또는 answer_choice 데이터가 비어있습니다."));
         }
     }
 }

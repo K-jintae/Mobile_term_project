@@ -9,6 +9,10 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,6 +23,9 @@ public class MainActivity extends AppCompatActivity {
     // activity_main.xml에 추가한 overlay용 컨테이너
     private View fragmentContainer;
 
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+
     // 게임 재화(골드)
     private int gold = 1200;
 
@@ -26,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
 
         // View 연결
         viewPager = findViewById(R.id.viewPager);
@@ -36,6 +46,27 @@ public class MainActivity extends AppCompatActivity {
         // ViewPager 설정
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);
+
+        // 로그인 유저 설정 불러오기
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+            db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    Long g = doc.getLong("gold");
+                    this.gold = (g != null) ? g.intValue() : 0;
+
+                    // 골드 업데이트가 끝나면 화면을 다시 투명하게
+                    updateTopBar();
+                    viewPager.setAdapter(new ViewPagerAdapter(this));
+                    viewPager.setCurrentItem(1, false);
+                } else {
+                    // 유저 데이터가 없으면 새로 생성
+                    java.util.Map<String, Object> newUser = new java.util.HashMap<>();
+                    newUser.put("gold", 0);
+                    db.collection("users").document(uid).set(newUser);
+                }
+            });
+        }
 
         // 저장된 유저 닉네임 불러오기
         SharedPreferences prefs = getSharedPreferences("user", MODE_PRIVATE);
@@ -66,7 +97,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    public void updateUserGold(int amount) {
+        // 1. 로컬 변수(내 지갑) 업데이트
+        this.gold += amount;
 
+        // 2. 파이어베이스 서버의 'gold' 필드 업데이트
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+            db.collection("users").document(uid)
+                    .update("gold", FieldValue.increment(amount)) // 💡 기존 골드에 amount만큼 더함
+                    .addOnSuccessListener(aVoid -> {
+                        // 상단바 코인 텍스트가 있다면 여기서 갱신해줍니다.
+                        // tvGold.setText(String.valueOf(this.gold));
+                    });
+        }
+    }
     // 상단 골드 표시 갱신
     public void updateTopBar() {
         tvGold.setText(String.valueOf(gold));

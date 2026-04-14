@@ -4,7 +4,7 @@ package com.example.term_project;
 public class QuizQuestion {
 
     // 문제 고유 번호
-    private int id;
+    private int quizId;
 
     // 문제 내용
     private String question;
@@ -17,18 +17,21 @@ public class QuizQuestion {
     // 예: 첫 번째 보기가 정답이면 0
     private int correctAnswerIndex;
 
-    // 생성자
+    // 문제 난이도
+    private String difficultyLevel;
+
     // QuizQuestion 객체를 만들 때 필요한 값들을 받음
-    public QuizQuestion(int id, String question, String[] options, int correctAnswerIndex) {
-        this.id = id;
+    public QuizQuestion(int quizId, String question, String[] options, int correctAnswerIndex, String difficultyLevel) {
+        this.quizId = quizId;
         this.question = question;
         this.options = options;
         this.correctAnswerIndex = correctAnswerIndex;
+        this.difficultyLevel = difficultyLevel;
     }
 
     // 문제 번호 반환
-    public int getId() {
-        return id;
+    public int getQuizId() {
+        return quizId;
     }
 
     // 문제 문장 반환
@@ -45,4 +48,7 @@ public class QuizQuestion {
     public int getCorrectAnswerIndex() {
         return correctAnswerIndex;
     }
+
+    // 문제 난이도 반환
+    public String getDifficultyLevel() { return difficultyLevel; }
 }
