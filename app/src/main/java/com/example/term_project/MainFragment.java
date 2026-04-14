@@ -19,6 +19,10 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import java.util.Random;
+import android.widget.FrameLayout;
+import android.app.Dialog;
+import android.widget.Button;
+import android.view.ViewGroup;
 
 public class MainFragment extends Fragment {
 
@@ -34,7 +38,14 @@ public class MainFragment extends Fragment {
 
     private View dimView;
     private LinearLayout settingsPopup;
+    // 소리 설정 팝업 관련 변수
+    private LinearLayout soundSettingsPopup;
+    private FrameLayout btnSoundOn;
+    private FrameLayout btnSoundMute;
+    private boolean isSoundOn = true; // 소리 설정 상태
 
+    // 도움말 팝업 관련 변수
+    private LinearLayout helpPopup;
     enum CharacterState {
         NORMAL,
         HUNGRY,
@@ -65,6 +76,21 @@ public class MainFragment extends Fragment {
         Button btnHelp = view.findViewById(R.id.btnHelp);
         Button btnClosePopup = view.findViewById(R.id.btnClosePopup);
         Button logoutBtn = view.findViewById(R.id.logoutBtn);
+
+        // 소리 설정 팝업 관련 findViewById
+        soundSettingsPopup = view.findViewById(R.id.soundSettingsPopup);
+        btnSoundOn = view.findViewById(R.id.btnSoundOn);
+        btnSoundMute = view.findViewById(R.id.btnSoundMute);
+        Button btnCloseSoundPopup = view.findViewById(R.id.btnCloseSoundPopup);
+
+        // 도움말 팝업 관련 findViewById
+        helpPopup = view.findViewById(R.id.helpPopup);
+        Button btnCloseHelpPopup = view.findViewById(R.id.btnCloseHelpPopup);
+
+        // SharedPreferences에서 소리 설정 상태 불러오기
+        SharedPreferences soundPref = requireActivity().getSharedPreferences("sound_settings", requireContext().MODE_PRIVATE);
+        isSoundOn = soundPref.getBoolean("isSoundOn", true);
+        updateSoundButtonUI();
 
         applyPressAnimation(btnSettings);
 
@@ -108,35 +134,90 @@ public class MainFragment extends Fragment {
         btnSettings.setOnClickListener(v -> showSettingsPopup());
 
         logoutBtn.setOnClickListener(v -> {
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("로그아웃")
-                    .setMessage("정말 로그아웃 하시겠습니까?")
-                    .setPositiveButton("예", (dialog, which) -> {
-                        hideSettingsPopup(() -> {
-                            SharedPreferences pref = requireActivity()
-                                    .getSharedPreferences("user", requireContext().MODE_PRIVATE);
-                            SharedPreferences.Editor editor = pref.edit();
-                            editor.putBoolean("isLogin", false);
-                            editor.apply();
+            Dialog logoutDialog = new Dialog(requireContext());
+            logoutDialog.setContentView(R.layout.dialog_logout);
+            logoutDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            logoutDialog.getWindow().setLayout(
+                    (int)(getResources().getDisplayMetrics().widthPixels * 0.85),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
 
-                            Intent intent = new Intent(getActivity(), LoginActivity.class);
-                            startActivity(intent);
-                            requireActivity().finish();
-                        });
-                    })
-                    .setNegativeButton("아니오", null)
-                    .show();
+            Button btnCancel = logoutDialog.findViewById(R.id.btnCancel);
+            Button btnConfirm = logoutDialog.findViewById(R.id.btnConfirm);
+
+            btnCancel.setOnClickListener(v1 -> logoutDialog.dismiss());
+
+            btnConfirm.setOnClickListener(v1 -> {
+                hideSettingsPopup(() -> {
+                    SharedPreferences pref = requireActivity()
+                            .getSharedPreferences("user", requireContext().MODE_PRIVATE);
+                    SharedPreferences.Editor editor = pref.edit();
+                    editor.putBoolean("isLogin", false);
+                    editor.apply();
+
+                    Intent intent = new Intent(getActivity(), LoginActivity.class);
+                    startActivity(intent);
+                    requireActivity().finish();
+                });
+                logoutDialog.dismiss();
+            });
+
+            logoutDialog.show();
         });
+
 
         btnClosePopup.setOnClickListener(v -> hideSettingsPopup(null));
 
         dimView.setOnClickListener(v -> hideSettingsPopup(null));
+        // 팝업 바깥 부분을 클릭하면 열려있는 모든 팝업 닫기
+        dimView.setOnClickListener(v -> {
+            // 소리 설정 팝업이 열려있으면 닫기
+            if (soundSettingsPopup.getVisibility() == View.VISIBLE) {
+                hideSoundSettingsPopup(null);
+            }
+            // 도움말 팝업이 열려있으면 닫기
+            else if (helpPopup.getVisibility() == View.VISIBLE) {
+                hideHelpPopup(null);
+            }
+            // 설정 팝업이 열려있으면 닫기
+            else if (settingsPopup.getVisibility() == View.VISIBLE) {
+                hideSettingsPopup(null);
+            }
+        });
 
-        btnSound.setOnClickListener(v ->
-                Toast.makeText(getActivity(), "소리 설정", Toast.LENGTH_SHORT).show());
 
-        btnHelp.setOnClickListener(v ->
-                Toast.makeText(getActivity(), "도움말", Toast.LENGTH_SHORT).show());
+        // 소리 설정 버튼 클릭
+        btnSound.setOnClickListener(v -> {
+            hideSettingsPopup(() -> showSoundSettingsPopup());
+        });
+
+        // 도움말 버튼 클릭
+        btnHelp.setOnClickListener(v -> {
+            hideSettingsPopup(() -> showHelpPopup());
+        });
+
+        // 소리 ON 버튼 클릭
+        btnSoundOn.setOnClickListener(v -> {
+            isSoundOn = true;
+            saveSoundSetting();
+            updateSoundButtonUI();
+            Toast.makeText(getActivity(), "음성이 켜졌습니다", Toast.LENGTH_SHORT).show();
+        });
+
+        // 소리 MUTE 버튼 클릭
+        btnSoundMute.setOnClickListener(v -> {
+            isSoundOn = false;
+            saveSoundSetting();
+            updateSoundButtonUI();
+            Toast.makeText(getActivity(), "음성이 꺼졌습니다", Toast.LENGTH_SHORT).show();
+        });
+
+        // 소리 설정 팝업 닫기 버튼
+        btnCloseSoundPopup.setOnClickListener(v -> hideSoundSettingsPopup(null));
+
+        // 도움말 팝업 닫기 버튼
+        btnCloseHelpPopup.setOnClickListener(v -> hideHelpPopup(null));
+
 
         return view;
     }
@@ -217,6 +298,132 @@ public class MainFragment extends Fragment {
                 })
                 .start();
     }
+
+    // ===== 소리 설정 팝업 메서드 =====
+    private void showSoundSettingsPopup() {
+        dimView.setAlpha(0f);
+        dimView.setVisibility(View.VISIBLE);
+        dimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        soundSettingsPopup.setVisibility(View.VISIBLE);
+        soundSettingsPopup.setAlpha(0f);
+        soundSettingsPopup.setScaleX(0.88f);
+        soundSettingsPopup.setScaleY(0.88f);
+        soundSettingsPopup.setTranslationY(20f);
+
+        soundSettingsPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void hideSoundSettingsPopup(Runnable endAction) {
+        dimView.animate()
+                .alpha(0f)
+                .setDuration(160)
+                .withEndAction(() -> {
+                    dimView.setVisibility(View.GONE);
+                    dimView.setAlpha(1f);
+                })
+                .start();
+
+        soundSettingsPopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    soundSettingsPopup.setVisibility(View.GONE);
+                    soundSettingsPopup.setAlpha(1f);
+                    soundSettingsPopup.setScaleX(1f);
+                    soundSettingsPopup.setScaleY(1f);
+                    soundSettingsPopup.setTranslationY(0f);
+
+                    if (endAction != null) {
+                        endAction.run();
+                    }
+                })
+                .start();
+    }
+
+    private void updateSoundButtonUI() {
+        if (isSoundOn) {
+            btnSoundOn.setAlpha(1.0f);
+            btnSoundMute.setAlpha(0.6f);
+        } else {
+            btnSoundOn.setAlpha(0.6f);
+            btnSoundMute.setAlpha(1.0f);
+        }
+    }
+
+    private void saveSoundSetting() {
+        SharedPreferences pref = requireActivity().getSharedPreferences("sound_settings", requireContext().MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putBoolean("isSoundOn", isSoundOn);
+        editor.apply();
+    }
+
+    // ===== 도움말 팝업 메서드 =====
+    private void showHelpPopup() {
+        dimView.setAlpha(0f);
+        dimView.setVisibility(View.VISIBLE);
+        dimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        helpPopup.setVisibility(View.VISIBLE);
+        helpPopup.setAlpha(0f);
+        helpPopup.setScaleX(0.88f);
+        helpPopup.setScaleY(0.88f);
+        helpPopup.setTranslationY(20f);
+
+        helpPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void hideHelpPopup(Runnable endAction) {
+        dimView.animate()
+                .alpha(0f)
+                .setDuration(160)
+                .withEndAction(() -> {
+                    dimView.setVisibility(View.GONE);
+                    dimView.setAlpha(1f);
+                })
+                .start();
+
+        helpPopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    helpPopup.setVisibility(View.GONE);
+                    helpPopup.setAlpha(1f);
+                    helpPopup.setScaleX(1f);
+                    helpPopup.setScaleY(1f);
+                    helpPopup.setTranslationY(0f);
+
+                    if (endAction != null) {
+                        endAction.run();
+                    }
+                })
+                .start();
+    }
+
 
     private void updateMessage(CharacterState state) {
         String message = "";

@@ -38,6 +38,11 @@ public class QuizPlayFragment extends Fragment {
         option3 = view.findViewById(R.id.option3);
         option4 = view.findViewById(R.id.option4);
         btnSubmit = view.findViewById(R.id.btnSubmit);
+        lottieEffect = view.findViewById(R.id.lottieEffect);
+        layoutResult = view.findViewById(R.id.layoutResult);
+        tvResultStatus = view.findViewById(R.id.tvResultStatus);
+
+
 
         repository = new QuizRepository();
 
