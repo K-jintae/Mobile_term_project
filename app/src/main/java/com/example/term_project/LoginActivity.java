@@ -73,6 +73,8 @@ public class LoginActivity extends AppCompatActivity {
         nameError = findViewById(R.id.nameError);
         checkIdBtn = findViewById(R.id.checkIdBtn);
 
+        //signupBtn을 부르는 함수만 추가
+        signupBtn = findViewById(R.id.signupBtn);
         loginBtn = findViewById(R.id.loginBtn);
         goSignupBtn = findViewById(R.id.goSignupBtn);
         backBtn = findViewById(R.id.backBtn);
