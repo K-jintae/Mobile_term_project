@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
     private static final int RC_SIGN_IN = 9001; // 로그인 요청 코드
-    private TextView signupError;
+    // private TextView signupError;   activity_login.xml 파일에 id가 없다고 떠서 임시 비활성화 49줄과 연관
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +46,7 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         mAuth = FirebaseAuth.getInstance();
-        signupError = findViewById(R.id.signupError);
+        // signupError = findViewById(R.id.signupError);
 
         pref = getSharedPreferences("user", MODE_PRIVATE);
 

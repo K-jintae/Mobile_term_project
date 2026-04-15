@@ -18,6 +18,10 @@ public class QuizPlayFragment extends Fragment {
     private RadioButton option1, option2, option3, option4;
     private Button btnSubmit;
 
+    private int totalSolvedCount = 0;     // 푼 문제 수
+    private int correctCount = 0;         // 맞춘 문제 수
+    private int earnedGold = 0;           // 최종 획득 골드
+
     private com.airbnb.lottie.LottieAnimationView lottieEffect;
     private View layoutResult;
     private TextView tvResultStatus;
@@ -57,6 +61,26 @@ public class QuizPlayFragment extends Fragment {
         return view;
     }
 
+    private void showFinalResult() {
+        if (getContext() == null) return;
+
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).addGold(earnedGold);
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("퀴즈 결과")
+                .setMessage(
+                        "총 푼 문제 수: " + totalSolvedCount + "문제\n" +
+                                "틀린 문제 수: " + (totalSolvedCount - correctCount) + "문제\n" +
+                                "맞춘 문제 수: " + correctCount + "문제\n" +
+                                "획득 골드: " + earnedGold + "G"
+                )
+                .setCancelable(false)
+                .setPositiveButton("확인", (dialog, which) -> closeFragment())
+                .show();
+    }
+
     private void loadQuestion(int subjectId, int questionId) {
         repository.getQuizQuestionFromFirestore(subjectId, questionId, new QuizRepository.OnQuestionFetchedListener() {
             @Override
@@ -72,9 +96,8 @@ public class QuizPlayFragment extends Fragment {
                 if (currentQuestionId == 1) {
                     tvQuestion.setText("문제를 찾을 수 없습니다");
                 } else {
-                    Toast.makeText(getContext(), "모든 문제를 클리어했습니다!", Toast.LENGTH_SHORT).show();
+                    showFinalResult();
                 }
-                closeFragment();
             }
         });
     }
@@ -140,16 +163,19 @@ public class QuizPlayFragment extends Fragment {
         }
     }
 
-    private void handleResult(boolean isCorrect){
+    private void handleResult(boolean isCorrect) {
         btnSubmit.setEnabled(false);
-        if(isCorrect){
+
+        totalSolvedCount++;
+
+        if (isCorrect) {
+            correctCount++;
             int goldToAdd = calculatedGold();
-            if(getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).updateUserGold(goldToAdd);
-            }
-            playEffect(R.raw.success, "정답입니다! \n" + goldToAdd + "G", true);
-        }else {
-            playEffect(R.raw.fail, "오답입니다 \n 다시 해보세요!", false);
+            earnedGold += goldToAdd;
+
+            playEffect(R.raw.success, "정답입니다!\n+" + goldToAdd + "G", true);
+        } else {
+            playEffect(R.raw.fail, "오답입니다!", true);
         }
     }
 
