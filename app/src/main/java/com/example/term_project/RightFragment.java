@@ -11,7 +11,6 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -73,7 +72,8 @@ public class RightFragment extends Fragment {
 
     private final List<Integer> interiorList = Arrays.asList(
             R.drawable.background_hill,
-            R.drawable.background_room
+            R.drawable.background_room,
+            R.drawable.background_space
     );
 
     @Nullable
@@ -241,10 +241,6 @@ public class RightFragment extends Fragment {
 
     private void addDressTile(DressItem item) {
         boolean selected = isDressSelected(item.getApplyResId());
-
-        // [추가] 보유 여부 체크 (테스트용: hiphop 모자만 미보유로 설정)
-        boolean isOwned = (item.getPreviewResId() != R.drawable.thumb_hat_hiphop);
-
         FrameLayout tile = createTile(selected);
 
         ImageView imageView = new ImageView(requireContext());
@@ -252,74 +248,28 @@ public class RightFragment extends Fragment {
         imageView.setTag(item.getApplyResId());
         imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
-        if (!isOwned) {
-            imageView.setAlpha(0.5f);
-        }
-
         FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
         imageView.setLayoutParams(imageParams);
-        tile.addView(imageView);
-
-        if (!isOwned) {
-            ImageView lockIcon = new ImageView(requireContext());
-            lockIcon.setImageResource(R.drawable.lock); // lock.jpg
-
-            int lockSize = dpToPx(20); // 자물쇠 크기
-            FrameLayout.LayoutParams lockParams = new FrameLayout.LayoutParams(lockSize, lockSize);
-            lockParams.setMargins(dpToPx(4), dpToPx(4), 0, 0); // 좌측 상단 여백
-            lockIcon.setLayoutParams(lockParams);
-
-            tile.addView(lockIcon);
-        }
 
         imageView.setOnClickListener(v -> {
             int resId = (int) v.getTag();
             animateTileSelect(tile);
-
-            if (isOwned) {
-                // 보유 중일 때: 원래대로 "변경할까요?"
-                showChangeConfirmPopup(resId, false, "변경할까요?");
-            } else {
-                // 미보유 시: "구매하시겠습니까?" (기능은 추후 구현)
-                showChangeConfirmPopup(resId, false, "구매하시겠습니까?");
-            }
+            showChangeConfirmPopup(resId, false);
         });
 
         imageView.setOnLongClickListener(v -> {
-            if (!isOwned) return false; // [추가] 미보유 시 드래그 불가
-
             ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
             View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
             v.startDragAndDrop(data, shadowBuilder, null, 0);
             return true;
         });
 
+        tile.addView(imageView);
         imageGrid.addView(tile);
     }
-
-    // showChangeConfirmPopup 메소드 수정 (텍스트 매개변수 추가)
-    private void showChangeConfirmPopup(int resId, boolean isInterior, String message) {
-        pendingResId = resId;
-        pendingIsInterior = isInterior;
-
-        // 텍스트 뷰 내용 변경
-        TextView tvMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
-        tvMessage.setText(message);
-
-        confirmDimView.setAlpha(0f);
-        confirmDimView.setVisibility(View.VISIBLE);
-        confirmDimView.animate().alpha(1f).setDuration(180).start();
-
-        changeConfirmPopup.setVisibility(View.VISIBLE);
-        changeConfirmPopup.setAlpha(0f);
-        changeConfirmPopup.setScaleX(0.88f);
-        changeConfirmPopup.setScaleY(0.88f);
-        changeConfirmPopup.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).start();
-    }
-
 
     private void addInteriorTile(int resId) {
         boolean selected = isInteriorSelected(resId);
