@@ -29,7 +29,8 @@ public class MainActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-
+    //소리 제어
+    private boolean isSoundOn = true;
     // 게임 재화(골드)
     private int gold = 1200;
 
@@ -52,10 +53,15 @@ public class MainActivity extends AppCompatActivity {
         viewPager.setCurrentItem(1, false);
 
         //배경음악 재생
+        isSoundOn = loadSoundSetting();
+
         mediaPlayer = MediaPlayer.create(this, R.raw.chestnut_cookie);
-        if(mediaPlayer != null){
-            mediaPlayer.setLooping(true);//반복
-            mediaPlayer.start();//시작
+
+        if (mediaPlayer != null) {
+            mediaPlayer.setLooping(true);
+            if (isSoundOn) {
+                mediaPlayer.start();
+            }
         }
 
         // 로그인 유저 설정 불러오기
@@ -106,9 +112,45 @@ public class MainActivity extends AppCompatActivity {
                     finish();
                 }
             }
-        });
+        }
+
+        );
     }
 
+
+    public boolean isSoundOn() {
+        return isSoundOn;
+    }
+
+    //음악 상태 shared preference에 저장
+    private void saveSoundSetting(boolean isOn) {
+        getSharedPreferences("settings", MODE_PRIVATE)
+                .edit()
+                .putBoolean("sound", isOn)
+                .apply();
+    }
+
+    private boolean loadSoundSetting() {
+        return getSharedPreferences("settings", MODE_PRIVATE)
+                .getBoolean("sound", true); // 기본값 true
+    }
+
+    public void setSound(boolean isOn) {
+        isSoundOn = isOn;
+        saveSoundSetting(isOn);
+
+        if (mediaPlayer == null) return;
+
+        if (isOn) {
+            if (!mediaPlayer.isPlaying()) {
+                mediaPlayer.start();
+            }
+        } else {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
+            }
+        }
+    }
 
     //음악 제어
     @Override
@@ -124,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // 앱으로 다시 돌아오면 음악 재시작
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+        if (mediaPlayer != null && isSoundOn && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
     }
