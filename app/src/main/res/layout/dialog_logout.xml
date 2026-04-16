@@ -10,49 +10,56 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="로그아웃"
+        android:text="정말 로그아웃 할까요?"
         android:textSize="18sp"
         android:textColor="#2B2B2B"
         android:textStyle="bold"
         android:gravity="center"
         android:layout_marginBottom="15dp"/>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="정말 로그아웃 하시겠습니까?"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:gravity="center"
-        android:layout_marginBottom="25dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:spacing="10dp">
+        android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/btnCancel"
+        <FrameLayout
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="아니오"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:background="@drawable/bg_btn_logout_red"
-            android:layout_marginEnd="8dp"/>
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_logout_button">
 
-        <Button
-            android:id="@+id/btnConfirm"
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnCancel"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:backgroundTint="@null"
+                android:text="아니오"
+                android:textColor="#2B2B2B"
+                android:textSize="14sp"
+                android:textAllCaps="false" />
+        </FrameLayout>
+
+        <FrameLayout
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="예"
-            android:textColor="#2B2B2B"
-            android:textSize="14sp"
-            android:background="@drawable/bg_btn_logout_gray"
-            android:layout_marginStart="8dp"/>
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_logout_button">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnConfirm"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:backgroundTint="@null"
+                android:text="네"
+                android:textColor="#2B2B2B"
+                android:textSize="14sp"
+                android:textAllCaps="false" />
+        </FrameLayout>
 
     </LinearLayout>
 
