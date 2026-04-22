@@ -87,9 +87,7 @@ public class MainFragment extends Fragment {
         helpPopup = view.findViewById(R.id.helpPopup);
         Button btnCloseHelpPopup = view.findViewById(R.id.btnCloseHelpPopup);
 
-        // SharedPreferences에서 소리 설정 상태 불러오기
-        SharedPreferences soundPref = requireActivity().getSharedPreferences("sound_settings", requireContext().MODE_PRIVATE);
-        isSoundOn = soundPref.getBoolean("isSoundOn", true);
+        isSoundOn = ((MainActivity) getActivity()).isSoundOn();
         updateSoundButtonUI();
 
         applyPressAnimation(btnSettings);
@@ -198,17 +196,19 @@ public class MainFragment extends Fragment {
 
         // 소리 ON 버튼 클릭
         btnSoundOn.setOnClickListener(v -> {
-            isSoundOn = true;
-            saveSoundSetting();
-            updateSoundButtonUI();
+            isSoundOn = true;              //상태 변경
+            updateSoundButtonUI();         //UI 반영
+
+            ((MainActivity) getActivity()).setSound(true);
             Toast.makeText(getActivity(), "음성이 켜졌습니다", Toast.LENGTH_SHORT).show();
         });
 
-        // 소리 MUTE 버튼 클릭
+        //소리 mute
         btnSoundMute.setOnClickListener(v -> {
             isSoundOn = false;
-            saveSoundSetting();
             updateSoundButtonUI();
+
+            ((MainActivity) getActivity()).setSound(false);
             Toast.makeText(getActivity(), "음성이 꺼졌습니다", Toast.LENGTH_SHORT).show();
         });
 
@@ -361,13 +361,6 @@ public class MainFragment extends Fragment {
             btnSoundOn.setAlpha(0.6f);
             btnSoundMute.setAlpha(1.0f);
         }
-    }
-
-    private void saveSoundSetting() {
-        SharedPreferences pref = requireActivity().getSharedPreferences("sound_settings", requireContext().MODE_PRIVATE);
-        SharedPreferences.Editor editor = pref.edit();
-        editor.putBoolean("isSoundOn", isSoundOn);
-        editor.apply();
     }
 
     // ===== 도움말 팝업 메서드 =====
