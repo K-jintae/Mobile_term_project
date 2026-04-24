@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 배경 -->
+    <solid android:color="#DDEFEF"/>
+
+    <!-- 테두리 -->
+    <stroke
+        android:width="3dp"
+        android:color="#2B2B2B"/>
+
+    <!-- 둥근 모서리 -->
+    <corners android:radius="24dp"/>
+
+    <!-- 여기 넣으면 됨 -->
+    <padding
+        android:left="2dp"
+        android:top="2dp"
+        android:right="2dp"
+        android:bottom="2dp"/>
+
+</shape>
