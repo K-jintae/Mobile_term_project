@@ -41,7 +41,7 @@ public class LeftFragment extends Fragment {
         cardLocked1 = view.findViewById(R.id.cardLocked1);
         cardLocked2 = view.findViewById(R.id.cardLocked2);
 
-        refreshCards();
+        loadProgressFromFirebase();
 
         return view;
     }
@@ -83,6 +83,39 @@ public class LeftFragment extends Fragment {
                             getLockedMessage(stageId),
                             Toast.LENGTH_SHORT).show()
             );
+        }
+    }
+
+    /* firebase에서 해금 정보 가져오기*/
+    private void loadProgressFromFirebase() {
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users").document(uid).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists() && isAdded()) {
+                            SharedPreferences.Editor editor = prefs.edit();
+
+                            // 스테이지 2부터 5까지 서버 기록 확인
+                            for (int i = 2; i <= 5; i++) {
+                                Boolean isUnlocked = doc.getBoolean("unlocked_stage_" + i);
+                                if (isUnlocked != null && isUnlocked) {
+                                    // 서버에 클리어 기록이 있으면 로컬 정보 업데이트
+                                    editor.putInt("stage_" + i + "_before_clear", 1);
+                                }
+                            }
+                            editor.apply();
+
+                            // 서버 데이터로 업데이트 완료 후 카드 화면 갱신
+                            refreshCards();
+                        }
+                    });
+        } else {
+            // 로그인 정보가 없으면 기존 기기 정보로만 갱신
+            refreshCards();
         }
     }
 

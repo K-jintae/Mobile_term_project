@@ -147,13 +147,17 @@ public class MainFragment extends Fragment {
 
             btnConfirm.setOnClickListener(v1 -> {
                 hideSettingsPopup(() -> {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
+                    // 기기 내부 자동로그인 해제
                     SharedPreferences pref = requireActivity()
                             .getSharedPreferences("user", requireContext().MODE_PRIVATE);
                     SharedPreferences.Editor editor = pref.edit();
                     editor.putBoolean("isLogin", false);
                     editor.apply();
 
+                    // 로그인 창으로 이동하면서 기존 화면(메인 창)들을 메모리에서 완전히 삭제
                     Intent intent = new Intent(getActivity(), LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     requireActivity().finish();
                 });

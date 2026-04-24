@@ -292,10 +292,11 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
-        // 모든 문제를 맞힌 경우만 클리어 처리
-        boolean isPerfectClear = (correctCount == totalSolvedCount);
+        // 정답률 계산 70%로 완화
+        double correctRate = ((double) correctCount / totalSolvedCount) * 100;
+        boolean isClear = (correctRate >= 70.0);
 
-        if (!isPerfectClear) {
+        if (!isClear) {
             return;
         }
 
@@ -303,14 +304,25 @@ public class QuizPlayFragment extends Fragment {
                 .getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
 
         SharedPreferences.Editor editor = prefs.edit();
-
         // 현재 단계 clear = 1
         editor.putInt("stage_" + currentSubjectId + "_clear", 1);
-
         // 다음 단계 before_clear = 현재 단계 clear 값
         editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
-
         editor.apply();
+
+        // firebase 서버에 다음 스테이지 해금 기록 저장
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            // "unlocked_stage_2: true" 형태로 저장됨
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users").document(uid)
+                    .update("unlocked_stage_" + (currentSubjectId + 1), true)
+                    .addOnSuccessListener(aVoid -> {
+                        // 서버 저장 성공 처리 (로그 등)
+                    });
+        }
     }
 
     /**
@@ -326,10 +338,11 @@ public class QuizPlayFragment extends Fragment {
             ((MainActivity) getActivity()).addGold(earnedGold);
         }
 
-        boolean isPerfectClear = (totalSolvedCount > 0 && correctCount == totalSolvedCount);
+        double correctRate = (totalSolvedCount > 0) ? ((double) correctCount / totalSolvedCount) * 100 : 0;
+        boolean isClear = (correctRate >= 70.0);
 
         String clearMessage;
-        if (isPerfectClear) {
+        if (isClear) {
             clearMessage = "단계 클리어: 성공\n다음 단계가 해금되었습니다.\n\n";
         } else {
             clearMessage = "단계 클리어: 실패\n모든 문제를 맞혀야 다음 단계가 해금됩니다.\n\n";

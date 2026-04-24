@@ -159,6 +159,8 @@ public class RightFragment extends Fragment {
             hideChangeConfirmPopup(() -> {
                 if (pendingIsInterior) {
                     viewModel.setInterior(pendingResId);
+                    String itemName = getResources().getResourceEntryName(pendingResId);
+                    ((MainActivity) getActivity()).updateEquippedItem("interior", itemName);
                 } else {
                     updateCharacter(pendingResId);
                 }
@@ -339,12 +341,19 @@ public class RightFragment extends Fragment {
     }
 
     private void updateCharacter(int resId) {
+        String itemName = getResources().getResourceEntryName(resId);
+
         if (containsApplyResId(hatList, resId)) {
             viewModel.setHat(resId);
+            ((MainActivity) getActivity()).updateEquippedItem("hat", itemName); // 파이어베이스 저장
+
         } else if (containsApplyResId(clothesList, resId)) {
             viewModel.setClothes(resId);
+            ((MainActivity) getActivity()).updateEquippedItem("clothes", itemName); // 파이어베이스 저장
+
         } else if (interiorList.contains(resId)) {
             viewModel.setInterior(resId);
+            ((MainActivity) getActivity()).updateEquippedItem("interior", itemName); // 파이어베이스 저장
         }
     }
 
@@ -359,6 +368,14 @@ public class RightFragment extends Fragment {
 
     private void resetCharacter() {
         viewModel.reset();
+
+        // 초기화 후, 서버에도 의상정보 리셋
+        MainActivity mainActivity = (MainActivity) getActivity();
+        if (mainActivity != null) {
+            mainActivity.updateEquippedItem("hat", "");
+            mainActivity.updateEquippedItem("clothes", "");
+            mainActivity.updateEquippedItem("interior", "background_hill"); // 기본 배경
+        }
     }
 
     private void refreshCurrentTab() {

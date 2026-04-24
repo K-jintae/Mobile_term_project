@@ -13,7 +13,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-
+import androidx.lifecycle.ViewModelProvider;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -69,8 +69,34 @@ public class MainActivity extends AppCompatActivity {
             String uid = mAuth.getCurrentUser().getUid();
             db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
+                    // 골드 로드
                     Long g = doc.getLong("gold");
                     this.gold = (g != null) ? g.intValue() : 0;
+                    updateTopBar();
+
+                    // 의상 정보 로드
+                    CharacterViewModel viewModel = new androidx.lifecycle.ViewModelProvider(this).get(CharacterViewModel.class);
+
+                    // 1. 모자 불러오기
+                    String hatName = doc.getString("hat");
+                    if (hatName != null && !hatName.isEmpty()) {
+                        int hatResId = getResources().getIdentifier(hatName, "drawable", getPackageName());
+                        if (hatResId != 0) viewModel.setHat(hatResId);
+                    }
+
+                    // 2. 옷 불러오기
+                    String clothesName = doc.getString("clothes");
+                    if (clothesName != null && !clothesName.isEmpty()) {
+                        int clothesResId = getResources().getIdentifier(clothesName, "drawable", getPackageName());
+                        if (clothesResId != 0) viewModel.setClothes(clothesResId);
+                    }
+
+                    // 3. 배경 불러오기
+                    String interiorName = doc.getString("interior");
+                    if (interiorName != null && !interiorName.isEmpty()) {
+                        int interiorResId = getResources().getIdentifier(interiorName, "drawable", getPackageName());
+                        if (interiorResId != 0) viewModel.setInterior(interiorResId);
+                    }
 
                     // 골드 업데이트가 끝나면 화면을 다시 투명하게
                     updateTopBar();
@@ -79,7 +105,10 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     // 유저 데이터가 없으면 새로 생성
                     java.util.Map<String, Object> newUser = new java.util.HashMap<>();
-                    newUser.put("gold", 0);
+                    newUser.put("gold", 100);
+                    newUser.put("hat", "none");
+                    newUser.put("clothes", "none");
+                    newUser.put("background", "none");
                     db.collection("users").document(uid).set(newUser);
                 }
             });
@@ -233,6 +262,21 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
+    // 의상정보 저장
+    public void updateEquippedItem(String category, String itemName) {
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            db.collection("users").document(uid)
+                    .update(category, itemName)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("Firebase", category + " 저장 완료: " + itemName);
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("Firebase", "저장 실패", e);
+                    });
+        }
+    }
     // 현재 overlay fragment를 닫는 함수
     public void closeCurrentFragment() {
         if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
