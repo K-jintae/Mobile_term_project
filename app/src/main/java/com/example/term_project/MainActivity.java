@@ -233,6 +233,21 @@ public class MainActivity extends AppCompatActivity {
     public void addGold(int amount) {
         gold += amount;
         updateTopBar();
+        if (mAuth.getCurrentUser() != null) {
+            // 🔥 에러 해결의 핵심: 여기서 uid가 누구인지 정의해 줍니다!
+            String uid = mAuth.getCurrentUser().getUid();
+
+            db.collection("users").document(uid)
+                    .update("gold", this.gold)
+                    .addOnSuccessListener(aVoid -> {
+                        // 저장 성공 시 남기는 로그 (안 보이게 숨겨진 기록)
+                        android.util.Log.d("Firebase", "골드 저장 완료: " + this.gold);
+                    })
+                    .addOnFailureListener(e -> {
+                        // 저장 실패 시 에러 확인용
+                        android.util.Log.e("Firebase", "골드 저장 실패", e);
+                    });
+        }
     }
 
     // 골드 사용  ex)  boolean success = ((MainActivity) getActivity()).spendGold(200);
