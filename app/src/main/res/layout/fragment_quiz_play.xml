@@ -20,7 +20,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="108dp" />
+                android:layout_height="84dp" />
 
             <FrameLayout
                 android:id="@+id/quizCharacterProfile"
@@ -29,7 +29,7 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="16dp"
                 android:background="@drawable/bg_quiz_profile_box"
-                android:padding="2.5dp">
+                android:padding="3dp">
 
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -40,8 +40,8 @@
 
                     <ImageView
                         android:id="@+id/quizCharacterBase"
-                        android:layout_width="190dp"
-                        android:layout_height="190dp"
+                        android:layout_width="196dp"
+                        android:layout_height="196dp"
                         android:layout_gravity="center|bottom"
                         android:layout_marginBottom="-59dp"
                         android:scaleType="fitCenter"
@@ -49,16 +49,16 @@
 
                     <ImageView
                         android:id="@+id/quizClothesImage"
-                        android:layout_width="190dp"
-                        android:layout_height="190dp"
+                        android:layout_width="196dp"
+                        android:layout_height="196dp"
                         android:layout_gravity="center|bottom"
                         android:layout_marginBottom="-59dp"
                         android:scaleType="fitCenter" />
 
                     <ImageView
                         android:id="@+id/quizFaceImage"
-                        android:layout_width="190dp"
-                        android:layout_height="190dp"
+                        android:layout_width="196dp"
+                        android:layout_height="196dp"
                         android:layout_gravity="center|bottom"
                         android:layout_marginBottom="-59dp"
                         android:scaleType="fitCenter"
@@ -66,8 +66,8 @@
 
                     <ImageView
                         android:id="@+id/quizHatImage"
-                        android:layout_width="190dp"
-                        android:layout_height="190dp"
+                        android:layout_width="196dp"
+                        android:layout_height="196dp"
                         android:layout_gravity="center|bottom"
                         android:layout_marginBottom="-59dp"
                         android:scaleType="fitCenter" />
