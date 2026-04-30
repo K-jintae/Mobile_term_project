@@ -444,7 +444,7 @@ public class QuizPlayFragment extends Fragment {
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawableResource(android.R.color.transparent);
-            window.setDimAmount(0.55f);
+            window.setDimAmount(0.001f);
         }
 
         AppCompatButton btnStay = dialogView.findViewById(R.id.btnStay);
