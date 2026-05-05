@@ -9,6 +9,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
 
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -285,5 +289,27 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     });
         });
+    }
+
+    // 키보드 이외의 영역 누르면 키보드 사라지게 함
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        View focusView = getCurrentFocus();
+        if (focusView != null) {
+            // 터치된 좌표가 현재 포커스를 가진 View(EditText 등)의 안쪽인지 확인
+            android.graphics.Rect rect = new android.graphics.Rect();
+            focusView.getGlobalVisibleRect(rect);
+            int x = (int) ev.getX();
+            int y = (int) ev.getY();
+
+            // 터치 지점이 EditText 영역 밖이라면 키보드를 숨김
+            if (!rect.contains(x, y)) {
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
+                }
+                focusView.clearFocus(); // 포커스 해제
+            }
+        }
+        return super.dispatchTouchEvent(ev);
     }
 }

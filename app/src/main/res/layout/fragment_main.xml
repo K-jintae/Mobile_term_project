@@ -92,19 +92,23 @@
     </FrameLayout>
 
     <!-- 캐릭터 하단 메시지창 -->
+
+    <!-- 설정 버튼 -->
+
     <FrameLayout
         android:id="@+id/msg_container"
-        android:layout_width="0dp"
-        android:layout_height="110dp"
+        android:layout_width="352dp"
+        android:layout_height="74dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="62dp"
+        android:layout_marginBottom="100dp"
         android:background="@drawable/bg_message_box"
+        android:elevation="6dp"
         android:padding="18dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="6dp">
+        app:layout_constraintHorizontal_bias="0.454"
+        app:layout_constraintStart_toStartOf="parent">
 
         <TextView
             android:id="@+id/tv_message"
@@ -116,7 +120,35 @@
             android:textSize="20sp" />
     </FrameLayout>
 
-    <!-- 설정 버튼 -->
+    <!--문제 이어풀기 버튼-->
+    <FrameLayout
+        android:id="@+id/quiz_container"
+        android:layout_width="204dp"
+        android:layout_height="54dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="36dp"
+        android:background="@drawable/bg_message_box"
+        android:elevation="6dp"
+        android:padding="18dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/quiz_message"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="문제 이어풀기"
+            android:textColor="#000000"
+            android:textSize="15sp" />
+    </FrameLayout>
+
     <ImageButton
         android:id="@+id/btnSettings"
         android:layout_width="54dp"
@@ -318,6 +350,7 @@
             android:textSize="24sp"
             android:textStyle="bold"
             android:elevation="6dp"/>
+
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnSound"

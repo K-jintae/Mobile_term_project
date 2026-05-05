@@ -1,5 +1,6 @@
 package com.example.term_project;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -128,6 +129,8 @@ public class MainFragment extends Fragment {
         });
 
         updateMessage(CharacterState.NORMAL);
+
+
 
         btnSettings.setOnClickListener(v -> showSettingsPopup());
 

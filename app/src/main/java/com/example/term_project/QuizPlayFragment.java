@@ -107,6 +107,7 @@ public class QuizPlayFragment extends Fragment {
             }
         });
 
+
         // Repository 생성
         repository = new QuizRepository();
 
@@ -121,6 +122,7 @@ public class QuizPlayFragment extends Fragment {
             currentSubjectId = getArguments().getInt("subject_id");
             loadQuestion(currentSubjectId, currentQuestionId);
         }
+
 
         // 제출 버튼 클릭 시 정답 확인
         btnSubmit.setOnClickListener(v -> checkAnswer());
@@ -137,6 +139,7 @@ public class QuizPlayFragment extends Fragment {
 
         return view;
     }
+
 
     /**
      * Firestore에서 문제를 불러온다.

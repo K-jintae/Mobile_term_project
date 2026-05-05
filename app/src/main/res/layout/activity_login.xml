@@ -22,87 +22,104 @@
 
         <ImageView
             android:id="@+id/iv_logo"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
+            android:layout_width="323dp"
+            android:layout_height="208dp"
             android:layout_marginBottom="5dp"
             android:src="@drawable/logo" />
 
-        <!-- 로그인 화면 박스 설정 -->
-        <androidx.cardview.widget.CardView
+        <!-- 겉 박스(CardView) 제거 후 개별 테두리 적용된 입력창들 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
-            app:cardBackgroundColor="#E0DDD5">
-            <LinearLayout
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <!-- 아이디 입력창 -->
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-            <!-- 베이지색으로 비밀번호, 아이디 칸 변경 -->
-                <com.google.android.material.textfield.TextInputLayout
+                app:boxBackgroundColor="#F2EFE9"
+                app:boxBackgroundMode="outline"
+                app:boxStrokeColor="#000000"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeWidthFocused="2dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:hintEnabled="true"
+                app:hintTextColor="#000000">
+
+                <EditText
+                    android:id="@+id/idInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:boxBackgroundMode="filled"
-                    app:boxBackgroundColor="#F2EFE9"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000"
-                    app:hintEnabled="true">
-                    <EditText
-                        android:id="@+id/idInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="아이디"
-                        android:textColor="#000000"
-                        android:inputType="textVisiblePassword"
-                        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"/>
-                </com.google.android.material.textfield.TextInputLayout>
+                    android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                    android:hint="아이디"
+                    android:inputType="textVisiblePassword"
+                    android:textColor="#000000" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
+            <!-- 비밀번호 입력창 -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:boxBackgroundColor="#F2EFE9"
+                app:boxBackgroundMode="outline"
+                app:boxStrokeColor="#000000"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeWidthFocused="2dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:hintEnabled="true"
+                app:hintTextColor="#000000"
+                app:passwordToggleEnabled="true"
+                app:passwordToggleTint="@color/black">
+
+                <EditText
+                    android:id="@+id/pwInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    app:boxBackgroundMode="filled"
-                    app:boxBackgroundColor="#F2EFE9"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000"
-                    app:hintEnabled="true"
-                    app:passwordToggleEnabled="true"
-                    app:passwordToggleTint="@color/black">
-                    <EditText
-                        android:id="@+id/pwInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="비밀번호"
-                        android:textColor="#000000"
-                        android:inputType="textPassword"
-                        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"/>
-                </com.google.android.material.textfield.TextInputLayout>
+                    android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"
+                    android:hint="비밀번호"
+                    android:inputType="textPassword"
+                    android:textColor="#000000" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <Button
-                    android:id="@+id/loginBtn"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="로그인"
-                    android:textColor="#FFFFFF"
-                    app:backgroundTint="#E57373"/>
+            <TextView
+                android:id="@+id/loginError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FF0000"
+                android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/goSignupBtn"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="@color/black"
-                    android:text="회원가입"
-                    android:textColor="#FFFFFF"/>
+            <Button
+                android:id="@+id/loginBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="로그인"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#E57373" />
 
-                <TextView
-                    android:id="@+id/loginError"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#FF0000"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+            <Button
+                android:id="@+id/goSignupBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:text="회원가입"
+                android:textColor="#FFFFFF" />
+
+            <com.google.android.gms.common.SignInButton
+                android:id="@+id/googleLoginBtn"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:layout_marginTop="10dp" />
+        </LinearLayout>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -110,13 +127,12 @@
     </LinearLayout>
 
 
-    <!-- 회원가입 overlay -->
-
+    <!-- 회원가입 overlay (배경색 통일) -->
     <LinearLayout
         android:id="@+id/signupLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#F2EFE9"
+        android:background="#E0DDD5"
         android:orientation="vertical"
         android:visibility="gone">
 
@@ -125,177 +141,173 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="16dp">
-
             <Button
                 android:id="@+id/backBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#E0DDD5"
+                android:backgroundTint="#D0C5B1"
                 android:textColor="#000000"
                 android:text="Back" />
-
         </LinearLayout>
 
-        <!-- 중앙 입력 영역 -->
-        <!--키보드에 가려지지 않도록 200dp margin 줌-->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
             android:padding="24dp">
-        <!-- 로그인, 회원가입 포함 네모박스 위치 조정 + 생성 -->
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.8"/>
 
-            <androidx.cardview.widget.CardView
+            <!-- 회원가입 전체 박스(CardView) 제거 후 개별 입력창 배치 -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="8dp"
-                app:cardBackgroundColor="#E0DDD5">
+                android:orientation="vertical"
+                android:padding="10dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="bottom">
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            app:boxBackgroundMode="filled"
-                            app:boxBackgroundColor="#F2EFE9"
-                            app:boxStrokeColor="#000000"
-                            app:hintTextColor="#000000">
-
-                            <EditText
-                                android:id="@+id/signupId"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:hint="아이디"
-                                android:textColor="#000000"
-                                android:inputType="textVisiblePassword"
-                                android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-                                android:background="@null"/>
-                        </com.google.android.material.textfield.TextInputLayout>
-           
-                        <!-- 중복확인 버튼 색, 아이콘 변경 -->
-                        <Button
-                            android:id="@+id/checkIdBtn"
-                            android:layout_width="wrap_content"
-                            android:layout_height="56dp"
-                            android:backgroundTint="#D0C5B1"
-                            android:textColor="#000000"
-                            android:text="중복확인"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:background="@drawable/button_rounded_beige"
-                            android:elevation="0dp"
-                            app:backgroundTint="@null"
-                            android:minHeight="0dp"
-                            android:minWidth="0dp"/>
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/idError"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="#FF0000"
-                        android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        app:boxBackgroundMode="filled"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
                         app:boxBackgroundColor="#F2EFE9"
+                        app:boxBackgroundMode="outline"
                         app:boxStrokeColor="#000000"
-                        app:hintTextColor="#000000"
-                        app:passwordToggleEnabled="true"
-                        app:passwordToggleTint="@color/black">
-                        <EditText
-                            android:id="@+id/signupPw"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="비밀번호"
-                            android:textColor="#000000"
-                            android:inputType="textPassword"
-                            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"
-                            android:background="@null"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <TextView
-                        android:id="@+id/pwError"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="#FF0000"
-                        android:visibility="gone" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="-10dp"
-                        app:boxBackgroundMode="filled"
-                        app:boxBackgroundColor="#F2EFE9"
-                        app:boxStrokeColor="#000000"
+                        app:boxStrokeWidth="2dp"
+                        app:boxStrokeWidthFocused="2dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusBottomEnd="16dp"
                         app:hintTextColor="#000000">
 
-                        <!--  닉네임 추가 -->
                         <EditText
-                            android:id="@+id/signupName"
+                            android:id="@+id/signupId"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:hint="닉네임"
+                            android:hint="아이디"
                             android:textColor="#000000"
-                            android:inputType="textPersonName"
+                            android:inputType="textVisiblePassword"
+                            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
                             android:background="@null"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <TextView
-                        android:id="@+id/nameError"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="#FF0000"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/signupError"
-                        android:textColor="#FF0000"
-                        android:visibility="gone"
-                        android:layout_marginTop="8dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"/>
-                        <!-- 회원가입 완료 버튼 색상 변경 -->
                     <Button
-                        android:id="@+id/signupBtn"
+                        android:id="@+id/checkIdBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="56dp"
+                        android:backgroundTint="#D0C5B1"
+                        android:textColor="#000000"
+                        android:text="중복확인"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:elevation="0dp"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/idError"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FF0000"
+                    android:visibility="gone" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:boxBackgroundColor="#F2EFE9"
+                    app:boxBackgroundMode="outline"
+                    app:boxStrokeColor="#000000"
+                    app:boxStrokeWidth="2dp"
+                    app:boxStrokeWidthFocused="2dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:hintTextColor="#000000"
+                    app:passwordToggleEnabled="true"
+                    app:passwordToggleTint="@color/black">
+
+                    <EditText
+                        android:id="@+id/signupPw"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:backgroundTint="#E57373"
-                        android:textColor="#FFFFFF"
-                        android:text="회원가입 완료" />
+                        android:hint="비밀번호"
+                        android:textColor="#000000"
+                        android:inputType="textPassword"
+                        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&amp;*()"
+                        android:background="@null"/>
+                </com.google.android.material.textfield.TextInputLayout>
 
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                <TextView
+                    android:id="@+id/pwError"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FF0000"
+                    android:visibility="gone" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:boxBackgroundColor="#F2EFE9"
+                    app:boxBackgroundMode="outline"
+                    app:boxStrokeColor="#000000"
+                    app:boxStrokeWidth="2dp"
+                    app:boxStrokeWidthFocused="2dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:hintTextColor="#000000">
+
+                    <EditText
+                        android:id="@+id/signupName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="닉네임"
+                        android:textColor="#000000"
+                        android:inputType="textPersonName"
+                        android:background="@null"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/nameError"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FF0000"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/signupBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:backgroundTint="#E57373"
+                    android:textColor="#FFFFFF"
+                    android:text="회원가입 완료" />
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1.2"/>
         </LinearLayout>
     </LinearLayout>
-    <!-- 구글 로그인 화면 추가 -->
+
+    <!-- 구글 로그인 에러 처리 영역 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -303,20 +315,12 @@
         android:orientation="vertical"
         android:gravity="center"
         android:padding="20dp"
-        android:layout_marginBottom="50dp">
-
-        <com.google.android.gms.common.SignInButton
-            android:id="@+id/googleLoginBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp" />
-
+        android:layout_marginBottom="20dp">
         <TextView
             android:id="@+id/googleLoginError"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#FF0000"
             android:textSize="12sp" />
-
     </LinearLayout>
 </FrameLayout>
