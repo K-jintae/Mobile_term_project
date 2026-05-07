@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import java.util.Arrays;
 import java.util.List;
+import android.widget.TextView;
 
 public class RightFragment extends Fragment {
 
@@ -38,7 +39,8 @@ public class RightFragment extends Fragment {
     private View confirmDimView;
     private LinearLayout changeConfirmPopup;
     private AppCompatButton btnConfirmYes, btnConfirmNo;
-
+    private boolean pendingIsRemove = false;
+    private String pendingRemoveType = "";
     private int pendingResId = 0;
     private boolean pendingIsInterior = false;
 
@@ -166,13 +168,20 @@ public class RightFragment extends Fragment {
 
         btnConfirmYes.setOnClickListener(v -> {
             hideChangeConfirmPopup(() -> {
-                if (pendingIsInterior) {
-                    viewModel.setInterior(pendingResId);
-                    String itemName = getResources().getResourceEntryName(pendingResId);
-                    ((MainActivity) getActivity()).updateEquippedItem("interior", itemName);
+                if (pendingIsRemove) {
+                    removeEquippedItem(pendingRemoveType);
                 } else {
-                    updateCharacter(pendingResId);
+                    if (pendingIsInterior) {
+                        viewModel.setInterior(pendingResId);
+                        String itemName = getResources().getResourceEntryName(pendingResId);
+                        ((MainActivity) getActivity()).updateEquippedItem("interior", itemName);
+                    } else {
+                        updateCharacter(pendingResId);
+                    }
                 }
+
+                pendingIsRemove = false;
+                pendingRemoveType = "";
             });
         });
 
@@ -268,7 +277,16 @@ public class RightFragment extends Fragment {
         imageView.setOnClickListener(v -> {
             int resId = (int) v.getTag();
             animateTileSelect(tile);
-            showChangeConfirmPopup(resId, false);
+
+            if (isDressSelected(resId)) {
+                if (containsApplyResId(hatList, resId)) {
+                    showRemoveConfirmPopup(resId, "hat");
+                } else if (containsApplyResId(clothesList, resId)) {
+                    showRemoveConfirmPopup(resId, "clothes");
+                }
+            } else {
+                showChangeConfirmPopup(resId, false);
+            }
         });
 
         imageView.setOnLongClickListener(v -> {
@@ -300,7 +318,12 @@ public class RightFragment extends Fragment {
         imageView.setOnClickListener(v -> {
             int interiorResId = (int) v.getTag();
             animateTileSelect(tile);
-            showChangeConfirmPopup(interiorResId, true);
+
+            if (isInteriorSelected(interiorResId)) {
+                showRemoveConfirmPopup(interiorResId, "interior");
+            } else {
+                showChangeConfirmPopup(interiorResId, true);
+            }
         });
 
         imageView.setOnLongClickListener(v -> {
@@ -364,6 +387,34 @@ public class RightFragment extends Fragment {
             viewModel.setInterior(resId);
             ((MainActivity) getActivity()).updateEquippedItem("interior", itemName); // 파이어베이스 저장
         }
+    }
+
+    private void removeEquippedItem(String removeType) {
+        MainActivity mainActivity = (MainActivity) getActivity();
+
+        if ("hat".equals(removeType)) {
+            viewModel.setHat(0);
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("hat", "");
+            }
+
+        } else if ("clothes".equals(removeType)) {
+            viewModel.setClothes(0);
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("clothes", "");
+            }
+
+        } else if ("interior".equals(removeType)) {
+            viewModel.setInterior(R.drawable.background_hill);
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("interior", "background_hill");
+            }
+        }
+
+        refreshCurrentTab();
     }
 
     private boolean containsApplyResId(List<DressItem> itemList, int resId) {
@@ -478,6 +529,46 @@ public class RightFragment extends Fragment {
     private void showChangeConfirmPopup(int resId, boolean isInterior) {
         pendingResId = resId;
         pendingIsInterior = isInterior;
+        pendingIsRemove = false;
+        pendingRemoveType = "";
+
+        TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
+        if (tvConfirmMessage != null) {
+            tvConfirmMessage.setText("변경할까요?");
+        }
+
+        confirmDimView.setAlpha(0f);
+        confirmDimView.setVisibility(View.VISIBLE);
+        confirmDimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        changeConfirmPopup.setVisibility(View.VISIBLE);
+        changeConfirmPopup.setAlpha(0f);
+        changeConfirmPopup.setScaleX(0.88f);
+        changeConfirmPopup.setScaleY(0.88f);
+        changeConfirmPopup.setTranslationY(20f);
+
+        changeConfirmPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void showRemoveConfirmPopup(int resId, String removeType) {
+        pendingResId = resId;
+        pendingIsInterior = false;
+        pendingIsRemove = true;
+        pendingRemoveType = removeType;
+
+        TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
+        if (tvConfirmMessage != null) {
+            tvConfirmMessage.setText("현재 아이템을\n제거할까요?");
+        }
 
         confirmDimView.setAlpha(0f);
         confirmDimView.setVisibility(View.VISIBLE);
