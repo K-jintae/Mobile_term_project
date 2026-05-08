@@ -128,7 +128,12 @@ public class MainFragment extends Fragment {
             }
         });
 
-        updateMessage(CharacterState.NORMAL);
+        if (getActivity() instanceof MainActivity
+                && ((MainActivity) getActivity()).isNeedQuizRecovery()) {
+            tvMessage.setText("오랜만이야... 퀴즈 하나 풀면 기분이 나아질 것 같아.");
+        } else {
+            updateMessage(CharacterState.NORMAL);
+        }
 
 
 

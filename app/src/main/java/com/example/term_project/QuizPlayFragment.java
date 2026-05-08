@@ -398,6 +398,7 @@ public class QuizPlayFragment extends Fragment {
         // 획득 골드 반영
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).addGold(earnedGold);
+            ((MainActivity) getActivity()).clearLongAbsenceStateAfterQuiz();
         }
 
         double correctRate = (totalSolvedCount > 0)

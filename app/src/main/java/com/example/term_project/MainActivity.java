@@ -33,6 +33,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean isSoundOn = true;
     // 게임 재화(골드)
     private int gold = 1200;
+    private static final String PREF_USER_STATE = "user_state";
+    private static final String KEY_LAST_LOGIN_TIME = "last_login_time";
+    private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
+    private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
         // ViewPager 설정
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);
+        checkLongAbsenceState();
 
         //배경음악 재생
         isSoundOn = loadSoundSetting();
@@ -305,5 +310,48 @@ public class MainActivity extends AppCompatActivity {
         } else {
             fragmentContainer.setVisibility(View.GONE);
         }
+    }
+    private void checkLongAbsenceState() {
+        SharedPreferences prefs = getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE);
+
+        long now = System.currentTimeMillis();
+        long lastLoginTime = prefs.getLong(KEY_LAST_LOGIN_TIME, 0L);
+        boolean needRecovery = prefs.getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
+
+        CharacterViewModel viewModel =
+                new ViewModelProvider(this).get(CharacterViewModel.class);
+
+        if (lastLoginTime != 0L && now - lastLoginTime >= TWO_DAYS_MILLIS) {
+            needRecovery = true;
+            prefs.edit()
+                    .putBoolean(KEY_NEED_QUIZ_RECOVERY, true)
+                    .apply();
+        }
+
+        if (needRecovery) {
+            viewModel.setFace(R.drawable.face_sad);
+        }
+
+        prefs.edit()
+                .putLong(KEY_LAST_LOGIN_TIME, now)
+                .apply();
+    }
+
+    public boolean isNeedQuizRecovery() {
+        return getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE)
+                .getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
+    }
+
+    public void clearLongAbsenceStateAfterQuiz() {
+        getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_NEED_QUIZ_RECOVERY, false)
+                .putLong(KEY_LAST_LOGIN_TIME, System.currentTimeMillis())
+                .apply();
+
+        CharacterViewModel viewModel =
+                new ViewModelProvider(this).get(CharacterViewModel.class);
+
+        viewModel.setFace(R.drawable.face_default);
     }
 }
