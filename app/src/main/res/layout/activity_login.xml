@@ -290,6 +290,37 @@
                     android:textColor="#FF0000"
                     android:visibility="gone" />
 
+                <!--레벨 선택 드롭다운 디자인-->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    app:boxBackgroundColor="#F2EFE9"
+                    app:boxBackgroundMode="outline"
+                    app:boxStrokeColor="#000000"
+                    app:boxStrokeWidth="2dp"
+                    app:boxStrokeWidthFocused="2dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:endIconTint="#000000"
+                    app:hintTextColor="#000000">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/levelDropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="내가 생각하는 나의 수준은?"
+                        android:inputType="none"
+                        android:textColor="#000000"
+                        android:textSize="16sp"
+                        android:padding="14dp"
+                        android:background="@android:color/transparent"/>
+
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <Button
                     android:id="@+id/signupBtn"
                     android:layout_width="match_parent"

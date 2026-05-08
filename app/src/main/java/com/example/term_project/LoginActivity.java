@@ -13,6 +13,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import android.widget.ArrayAdapter;
 
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -81,6 +83,7 @@ public class LoginActivity extends AppCompatActivity {
         pwError = findViewById(R.id.pwError);
         nameError = findViewById(R.id.nameError);
         checkIdBtn = findViewById(R.id.checkIdBtn);
+        MaterialAutoCompleteTextView levelDropdown;
 
         //signupBtn을 부르는 함수만 추가
         signupBtn = findViewById(R.id.signupBtn);
@@ -97,6 +100,22 @@ public class LoginActivity extends AppCompatActivity {
         backBtn.setOnClickListener(v -> {
             signupLayout.setVisibility(View.GONE);
         });
+
+        //레벨 선택 드롭다운 메뉴
+        levelDropdown = findViewById(R.id.levelDropdown);
+        String[] levels = {
+                "초급",
+                "중급",
+                "고급"
+        };
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                R.layout.dropdown_item,
+                levels
+        );
+
+        levelDropdown.setAdapter(adapter);
 
         // 아이디 중복 확인
         checkIdBtn.setOnClickListener(v -> {
@@ -159,6 +178,8 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
+
+
         // 회원가입
         signupBtn.setOnClickListener(v -> {
 
@@ -168,11 +189,11 @@ public class LoginActivity extends AppCompatActivity {
 
             String savedId = pref.getString("id", "");
 
-
             // 빈 값 검사
             idError.setVisibility(View.GONE);
             pwError.setVisibility(View.GONE);
             nameError.setVisibility(View.GONE);
+
 
             // 아이디 검사
             if (id.isEmpty()) {
@@ -223,6 +244,16 @@ public class LoginActivity extends AppCompatActivity {
             if (name.isEmpty()) {
                 nameError.setText("닉네임을 입력해주세요.");
                 nameError.setVisibility(View.VISIBLE);
+                return;
+            }
+
+            //레벨 테스트 선택 여부 검사
+            String selfLevel = levelDropdown.getText().toString().trim();
+
+            if (selfLevel.isEmpty()) {
+                Toast.makeText(this,
+                        "레벨을 선택해주세요.",
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -289,6 +320,7 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     });
         });
+
     }
 
     // 키보드 이외의 영역 누르면 키보드 사라지게 함

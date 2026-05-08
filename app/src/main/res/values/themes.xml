@@ -4,6 +4,24 @@
     <style name="Base.Theme.Term_Project" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- 필요하면 색상 커스터마이징 -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- 메인 포인트 색 -->
+        <item name="colorPrimary">#D0C5B1</item>
+
+        <!-- 진한 포인트 -->
+        <item name="colorPrimaryContainer">#B8AA90</item>
+
+        <!-- 보조 색 -->
+        <item name="colorSecondary">#E57373</item>
+
+        <!-- 배경 -->
+        <item name="android:colorBackground">#E0DDD5</item>
+
+        <!-- 상태바 -->
+        <item name="android:statusBarColor">#E0DDD5</item>
+
+        <!-- 네비게이션 바 -->
+        <item name="android:navigationBarColor">#E0DDD5</item>
+
     </style>
 
     <!-- 실제 앱에서 사용하는 테마 -->
