@@ -151,3 +151,8 @@ updateMessage(CharacterState.NORMAL);
    tvCoin.setText("100");
 
   - app 폴더 안에 google-services.json파일 추가
+
+### 이틀 이상 접속 안 하면 캐릭터 우는 표정, 문제 풀기 한번 완료해야 기본으로 돌아옴.
+
+MainActivity.java의 
+private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L; 에서 숫자를 5 * 1000L로 하면 5초동안 접속하지 않으면 우는 표정이 됨.(잘 작동하는지 확인용)
