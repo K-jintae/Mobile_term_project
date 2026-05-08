@@ -128,13 +128,6 @@ public class MainFragment extends Fragment {
             }
         });
 
-        if (getActivity() instanceof MainActivity
-                && ((MainActivity) getActivity()).isNeedQuizRecovery()) {
-            tvMessage.setText("오랜만이야... 퀴즈 하나 풀면 기분이 나아질 것 같아.");
-        } else {
-            updateMessage(CharacterState.NORMAL);
-        }
-
 
 
         btnSettings.setOnClickListener(v -> showSettingsPopup());
@@ -431,10 +424,22 @@ public class MainFragment extends Fragment {
 
 
     private void updateMessage(CharacterState state) {
+
+        // 48시간 미접속 상태면 무조건 이 메시지 출력
+        if (getActivity() instanceof MainActivity
+                && ((MainActivity) getActivity()).isNeedQuizRecovery()) {
+
+            if (tvMessage != null) {
+                tvMessage.setText("오랜만이야... 퀴즈 하나 풀면\n기분이 나아질 것 같아.");
+            }
+            return;
+        }
+
         String message = "";
         Random random = new Random();
 
         switch (state) {
+
             case NORMAL:
                 String[] normalMessage = {
                         "안녕! 반가워!",
