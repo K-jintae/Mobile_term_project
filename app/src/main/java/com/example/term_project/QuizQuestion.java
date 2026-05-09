@@ -20,6 +20,7 @@ public class QuizQuestion {
     // 문제 난이도
     private String difficultyLevel;
 
+
     // QuizQuestion 객체를 만들 때 필요한 값들을 받음
     public QuizQuestion(int quizId, String question, String[] options, int correctAnswerIndex, String difficultyLevel) {
         this.quizId = quizId;
