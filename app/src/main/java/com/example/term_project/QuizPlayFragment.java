@@ -18,6 +18,9 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class QuizPlayFragment extends Fragment {
 
     private TextView tvQuestion;
@@ -36,8 +39,13 @@ public class QuizPlayFragment extends Fragment {
     private QuizQuestion currentQuestion;
 
     private int currentSubjectId = 1;
-    private int currentQuestionId = 1;
     private String currentDifficultyLevel = "easy";
+
+    // 냅색 알고리즘으로 선별된 문제 목록
+    private List<QuizQuestion> selectedQuestions = new ArrayList<>();
+
+    // 현재 몇 번째 문제를 풀고 있는지
+    private int currentQuestionIndex = 0;
 
     private int totalSolvedCount = 0;
     private int correctCount = 0;
@@ -53,17 +61,21 @@ public class QuizPlayFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
+    public View onCreateView(
+            LayoutInflater inflater,
+            ViewGroup container,
+            Bundle savedInstanceState
+    ) {
         View view = inflater.inflate(R.layout.fragment_quiz_play, container, false);
 
         tvQuestion = view.findViewById(R.id.tvQuestion);
         radioGroup = view.findViewById(R.id.radioGroupOptions);
+
         option1 = view.findViewById(R.id.option1);
         option2 = view.findViewById(R.id.option2);
         option3 = view.findViewById(R.id.option3);
         option4 = view.findViewById(R.id.option4);
+
         btnSubmit = view.findViewById(R.id.btnSubmit);
 
         lottieEffect = view.findViewById(R.id.lottieEffect);
@@ -77,7 +89,6 @@ public class QuizPlayFragment extends Fragment {
         repository = new QuizRepository();
 
         setupCharacterImages();
-
         applyPressAnimation(btnSubmit);
 
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> updateOptionBackgrounds());
@@ -87,7 +98,12 @@ public class QuizPlayFragment extends Fragment {
             currentDifficultyLevel = getArguments().getString("difficulty_level", "easy");
         }
 
-        loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
+        // 기존 방식:
+        // loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
+        //
+        // 수정 방식:
+        // 과목 전체 문제를 가져온 뒤 냅색 알고리즘으로 출제 문제를 선별한다.
+        loadQuestionSet(currentSubjectId, currentDifficultyLevel);
 
         btnSubmit.setOnClickListener(v -> checkAnswer());
 
@@ -123,28 +139,40 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
-    private void loadQuestion(int subjectId, int questionId, String difficultyLevel) {
+    private void loadQuestionSet(int subjectId, String difficultyLevel) {
         btnSubmit.setEnabled(false);
-        tvQuestion.setText("문제를 불러오는 중입니다...");
+        tvQuestion.setText("문제를 구성하는 중입니다...");
 
-        repository.getQuizQuestionFromFirestore(
+        repository.getAllQuizQuestionsBySubject(
                 subjectId,
-                questionId,
-                difficultyLevel,
-                new QuizRepository.OnQuestionFetchedListener() {
+                new QuizRepository.OnQuestionsFetchedListener() {
                     @Override
-                    public void onSuccess(QuizQuestion question) {
+                    public void onSuccess(List<QuizQuestion> questions) {
                         if (!isAdded()) {
                             return;
                         }
 
-                        currentQuestion = question;
-                        bindQuestion(question);
+                        selectedQuestions = QuizSelector.selectQuestions(
+                                questions,
+                                difficultyLevel
+                        );
 
-                        radioGroup.clearCheck();
-                        updateOptionBackgrounds();
+                        if (selectedQuestions == null || selectedQuestions.isEmpty()) {
+                            tvQuestion.setText(
+                                    "출제 가능한 문제가 없습니다.\n"
+                                            + "과목 번호: " + currentSubjectId + "\n"
+                                            + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel)
+                            );
+                            btnSubmit.setEnabled(false);
+                            return;
+                        }
 
-                        btnSubmit.setEnabled(true);
+                        currentQuestionIndex = 0;
+                        totalSolvedCount = 0;
+                        correctCount = 0;
+                        earnedGold = 0;
+
+                        showQuestionByIndex();
                     }
 
                     @Override
@@ -153,24 +181,39 @@ public class QuizPlayFragment extends Fragment {
                             return;
                         }
 
-                        // 첫 문제부터 없으면 출제 가능한 문제가 없는 상태
-                        if (currentQuestionId == 1) {
-                            tvQuestion.setText(
-                                    "출제 가능한 문제가 없습니다.\n"
-                                            + "과목 번호: " + currentSubjectId + "\n"
-                                            + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel) + "\n\n"
-                                            + e.getMessage()
-                            );
-                            btnSubmit.setEnabled(false);
-                            return;
-                        }
-
-                        // 2번 이후 문제가 없으면 해당 난이도 문제를 다 푼 것으로 처리
-                        completeStageIfClear();
-                        showFinalResult();
+                        tvQuestion.setText(
+                                "출제 가능한 문제가 없습니다.\n"
+                                        + "과목 번호: " + currentSubjectId + "\n"
+                                        + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel)
+                                        + "\n\n"
+                                        + e.getMessage()
+                        );
+                        btnSubmit.setEnabled(false);
                     }
                 }
         );
+    }
+
+    private void showQuestionByIndex() {
+        if (selectedQuestions == null || selectedQuestions.isEmpty()) {
+            tvQuestion.setText("출제 가능한 문제가 없습니다.");
+            btnSubmit.setEnabled(false);
+            return;
+        }
+
+        if (currentQuestionIndex >= selectedQuestions.size()) {
+            completeStageIfClear();
+            showFinalResult();
+            return;
+        }
+
+        currentQuestion = selectedQuestions.get(currentQuestionIndex);
+
+        bindQuestion(currentQuestion);
+        radioGroup.clearCheck();
+        updateOptionBackgrounds();
+
+        btnSubmit.setEnabled(true);
     }
 
     private void bindQuestion(QuizQuestion question) {
@@ -178,7 +221,15 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
-        tvQuestion.setText(question.getQuestion());
+        String difficultyText = getDifficultyKoreanName(question.getDifficultyLevel());
+        int questionNumber = currentQuestionIndex + 1;
+        int totalQuestionCount = selectedQuestions.size();
+
+        tvQuestion.setText(
+                "[" + questionNumber + " / " + totalQuestionCount + "] "
+                        + "(" + difficultyText + ") "
+                        + question.getQuestion()
+        );
 
         String[] options = question.getOptions();
 
@@ -186,6 +237,11 @@ public class QuizPlayFragment extends Fragment {
         option2.setVisibility(View.GONE);
         option3.setVisibility(View.GONE);
         option4.setVisibility(View.GONE);
+
+        option1.setChecked(false);
+        option2.setChecked(false);
+        option3.setChecked(false);
+        option4.setChecked(false);
 
         if (options != null) {
             if (options.length > 0) {
@@ -284,8 +340,14 @@ public class QuizPlayFragment extends Fragment {
                 layoutResult.postDelayed(() -> {
                     layoutResult.setVisibility(View.GONE);
 
-                    currentQuestionId++;
-                    loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
+                    // 기존 방식:
+                    // currentQuestionId++;
+                    // loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
+                    //
+                    // 수정 방식:
+                    // 이미 선별된 문제 리스트에서 다음 문제로 이동한다.
+                    currentQuestionIndex++;
+                    showQuestionByIndex();
                 }, 500);
             }
 
@@ -304,17 +366,11 @@ public class QuizPlayFragment extends Fragment {
             return 0;
         }
 
-        String level = currentQuestion.getDifficultyLevel();
-
-        if ("hard".equals(level)) {
-            return 30;
-        }
-
-        if ("normal".equals(level)) {
-            return 20;
-        }
-
-        return 10;
+        // 냅색 점수와 골드 보상을 통일
+        // easy = 15, normal = 30, hard = 45
+        return QuizSelector.getScoreByDifficulty(
+                currentQuestion.getDifficultyLevel()
+        );
     }
 
     private void completeStageIfClear() {
@@ -334,10 +390,13 @@ public class QuizPlayFragment extends Fragment {
 
         SharedPreferences.Editor editor = prefs.edit();
 
-        // 현재 과목 클리어 저장
-        editor.putInt("subject_" + currentSubjectId + "_" + currentDifficultyLevel + "_clear", 1);
+        // 현재 과목 + 현재 난이도 클리어 저장
+        editor.putInt(
+                "subject_" + currentSubjectId + "_" + currentDifficultyLevel + "_clear",
+                1
+        );
 
-        // 기존 단계 해금 구조 유지: 현재 과목 클리어 시 다음 과목 해금
+        // 기존 단계 해금 구조 유지
         editor.putInt("stage_" + currentSubjectId + "_clear", 1);
         editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
 
@@ -374,20 +433,25 @@ public class QuizPlayFragment extends Fragment {
         String clearMessage;
 
         if (isClear) {
-            clearMessage = "과목 " + currentSubjectId + "의 "
-                    + getDifficultyKoreanName(currentDifficultyLevel)
-                    + " 난이도 클리어 성공!\n\n";
+            clearMessage =
+                    "과목 " + currentSubjectId
+                            + "의 "
+                            + getDifficultyKoreanName(currentDifficultyLevel)
+                            + " 난이도 클리어 성공!\n\n";
         } else {
-            clearMessage = "과목 " + currentSubjectId + "의 "
-                    + getDifficultyKoreanName(currentDifficultyLevel)
-                    + " 난이도 클리어 실패\n"
-                    + "70% 이상 맞혀야 클리어됩니다.\n\n";
+            clearMessage =
+                    "과목 " + currentSubjectId
+                            + "의 "
+                            + getDifficultyKoreanName(currentDifficultyLevel)
+                            + " 난이도 클리어 실패\n"
+                            + "70% 이상 맞혀야 클리어됩니다.\n\n";
         }
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("퀴즈 결과")
                 .setMessage(
                         clearMessage
+                                + "총 출제 문제 수: " + selectedQuestions.size() + "문제\n"
                                 + "총 푼 문제 수: " + totalSolvedCount + "문제\n"
                                 + "맞춘 문제 수: " + correctCount + "문제\n"
                                 + "틀린 문제 수: " + (totalSolvedCount - correctCount) + "문제\n"

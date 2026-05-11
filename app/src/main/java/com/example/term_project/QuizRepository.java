@@ -21,7 +21,10 @@ public class QuizRepository {
         void onSuccess(QuizQuestion question);
         void onFailure(Exception e);
     }
-
+    public interface OnQuestionsFetchedListener {
+        void onSuccess(List<QuizQuestion> questions);
+        void onFailure(Exception e);
+    }
     /*
      * 현재 사용 버전
      *
@@ -38,6 +41,101 @@ public class QuizRepository {
      * QuizPlayFragment에서는 difficultyLevel을 넘겨주지만,
      * 여기서는 아직 검색 조건에 사용하지 않는다.
      */
+    @SuppressWarnings("unchecked")
+    public void getAllQuizQuestionsBySubject(
+            int subjectId,
+            OnQuestionsFetchedListener listener
+    ) {
+        db.collection(ROOT_COLLECTION)
+                .whereEqualTo("subject_id", subjectId)
+                .get()
+                .addOnSuccessListener(subjectDocs -> {
+                    if (subjectDocs.isEmpty()) {
+                        listener.onFailure(
+                                new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다.")
+                        );
+                        return;
+                    }
+
+                    DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
+
+                    subjectDoc.getReference()
+                            .collection(SUB_COLLECTION)
+                            .get()
+                            .addOnSuccessListener(quizDocs -> {
+                                List<QuizQuestion> result = new java.util.ArrayList<>();
+
+                                for (DocumentSnapshot doc : quizDocs.getDocuments()) {
+                                    String questionText = doc.getString("question");
+
+                                    Object optionsObj = doc.get("answer_choice");
+                                    List<String> optionsList = null;
+
+                                    if (optionsObj instanceof List) {
+                                        optionsList = (List<String>) optionsObj;
+                                    }
+
+                                    int answerIndex = 0;
+                                    Object correctObj = doc.get("answer_correct");
+
+                                    if (correctObj instanceof Number) {
+                                        answerIndex = ((Number) correctObj).intValue();
+                                    } else if (correctObj instanceof String) {
+                                        try {
+                                            answerIndex = Integer.parseInt((String) correctObj);
+                                        } catch (Exception ignored) {
+                                            answerIndex = 0;
+                                        }
+                                    }
+
+                                    int quizId = 0;
+                                    Object quizIdObj = doc.get("quiz_id");
+
+                                    if (quizIdObj instanceof Number) {
+                                        quizId = ((Number) quizIdObj).intValue();
+                                    } else if (quizIdObj instanceof String) {
+                                        try {
+                                            quizId = Integer.parseInt((String) quizIdObj);
+                                        } catch (Exception ignored) {
+                                            quizId = 0;
+                                        }
+                                    }
+
+                                    String difficulty = doc.getString("difficulty_level");
+                                    String diff = difficulty != null ? difficulty : "easy";
+
+                                    if (questionText != null
+                                            && optionsList != null
+                                            && !optionsList.isEmpty()) {
+
+                                        String[] options = optionsList.toArray(new String[0]);
+
+                                        result.add(new QuizQuestion(
+                                                quizId,
+                                                questionText,
+                                                options,
+                                                answerIndex,
+                                                diff
+                                        ));
+                                    }
+                                }
+
+                                if (result.isEmpty()) {
+                                    listener.onFailure(
+                                            new Exception("출제 가능한 문제가 없습니다.")
+                                    );
+                                } else {
+                                    listener.onSuccess(result);
+                                }
+                            })
+                            .addOnFailureListener(e -> listener.onFailure(
+                                    new Exception("문제 목록 읽기 실패: " + e.getMessage())
+                            ));
+                })
+                .addOnFailureListener(e -> listener.onFailure(
+                        new Exception("과목 데이터 읽기 실패: " + e.getMessage())
+                ));
+    }
     public void getQuizQuestionFromFirestore(
             int subjectId,
             int questionId,
