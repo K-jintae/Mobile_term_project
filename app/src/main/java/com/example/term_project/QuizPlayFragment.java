@@ -23,6 +23,9 @@ import java.util.List;
 
 public class QuizPlayFragment extends Fragment {
 
+    private static final int MAX_QUESTION_COUNT = 10;
+    private static final double CLEAR_RATE_BY_TARGET_SCORE = 0.8;
+
     private TextView tvQuestion;
     private RadioGroup radioGroup;
     private RadioButton option1;
@@ -36,19 +39,24 @@ public class QuizPlayFragment extends Fragment {
     private TextView tvResultStatus;
 
     private QuizRepository repository;
+
+    private List<QuizQuestion> questionList = new ArrayList<>();
     private QuizQuestion currentQuestion;
 
     private int currentSubjectId = 1;
-    private String currentDifficultyLevel = "easy";
-
-    // 냅색 알고리즘으로 선별된 문제 목록
-    private List<QuizQuestion> selectedQuestions = new ArrayList<>();
-
-    // 현재 몇 번째 문제를 풀고 있는지
     private int currentQuestionIndex = 0;
+    private String currentDifficultyLevel = "easy";
 
     private int totalSolvedCount = 0;
     private int correctCount = 0;
+
+    // 실제 정답으로 얻은 점수
+    private int earnedScore = 0;
+
+    // 출제된 문제 전체를 다 맞혔을 때의 총점
+    private int targetScore = 0;
+
+    // 골드는 기존처럼 정답 점수와 동일하게 지급
     private int earnedGold = 0;
 
     private CharacterViewModel characterViewModel;
@@ -61,21 +69,16 @@ public class QuizPlayFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(
-            LayoutInflater inflater,
-            ViewGroup container,
-            Bundle savedInstanceState
-    ) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+
         View view = inflater.inflate(R.layout.fragment_quiz_play, container, false);
 
         tvQuestion = view.findViewById(R.id.tvQuestion);
         radioGroup = view.findViewById(R.id.radioGroupOptions);
-
         option1 = view.findViewById(R.id.option1);
         option2 = view.findViewById(R.id.option2);
         option3 = view.findViewById(R.id.option3);
         option4 = view.findViewById(R.id.option4);
-
         btnSubmit = view.findViewById(R.id.btnSubmit);
 
         lottieEffect = view.findViewById(R.id.lottieEffect);
@@ -98,12 +101,7 @@ public class QuizPlayFragment extends Fragment {
             currentDifficultyLevel = getArguments().getString("difficulty_level", "easy");
         }
 
-        // 기존 방식:
-        // loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
-        //
-        // 수정 방식:
-        // 과목 전체 문제를 가져온 뒤 냅색 알고리즘으로 출제 문제를 선별한다.
-        loadQuestionSet(currentSubjectId, currentDifficultyLevel);
+        loadQuestionList();
 
         btnSubmit.setOnClickListener(v -> checkAnswer());
 
@@ -139,12 +137,22 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
-    private void loadQuestionSet(int subjectId, String difficultyLevel) {
+    /*
+     * 기존 방식:
+     * quiz_id를 1,2,3... 순서대로 하나씩 가져옴.
+     *
+     * 변경 방식:
+     * Firebase에서 해당 과목 문제 목록을 한 번에 가져온 뒤
+     * 최대 10문제를 출제한다.
+     */
+    private void loadQuestionList() {
         btnSubmit.setEnabled(false);
-        tvQuestion.setText("문제를 구성하는 중입니다...");
+        tvQuestion.setText("문제를 불러오는 중입니다...");
 
-        repository.getAllQuizQuestionsBySubject(
-                subjectId,
+        repository.getQuizQuestionsFromFirestore(
+                currentSubjectId,
+                currentDifficultyLevel,
+                MAX_QUESTION_COUNT,
                 new QuizRepository.OnQuestionsFetchedListener() {
                     @Override
                     public void onSuccess(List<QuizQuestion> questions) {
@@ -152,27 +160,23 @@ public class QuizPlayFragment extends Fragment {
                             return;
                         }
 
-                        selectedQuestions = QuizSelector.selectQuestions(
-                                questions,
-                                difficultyLevel
-                        );
-
-                        if (selectedQuestions == null || selectedQuestions.isEmpty()) {
-                            tvQuestion.setText(
-                                    "출제 가능한 문제가 없습니다.\n"
-                                            + "과목 번호: " + currentSubjectId + "\n"
-                                            + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel)
-                            );
-                            btnSubmit.setEnabled(false);
-                            return;
-                        }
+                        questionList.clear();
+                        questionList.addAll(questions);
 
                         currentQuestionIndex = 0;
                         totalSolvedCount = 0;
                         correctCount = 0;
+                        earnedScore = 0;
                         earnedGold = 0;
 
-                        showQuestionByIndex();
+                        targetScore = calculateTargetScore(questionList);
+
+                        if (questionList.isEmpty()) {
+                            showNoQuestionMessage("출제 가능한 문제가 없습니다.");
+                            return;
+                        }
+
+                        bindCurrentQuestion();
                     }
 
                     @Override
@@ -181,35 +185,43 @@ public class QuizPlayFragment extends Fragment {
                             return;
                         }
 
-                        tvQuestion.setText(
-                                "출제 가능한 문제가 없습니다.\n"
-                                        + "과목 번호: " + currentSubjectId + "\n"
-                                        + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel)
-                                        + "\n\n"
-                                        + e.getMessage()
-                        );
-                        btnSubmit.setEnabled(false);
+                        showNoQuestionMessage(e.getMessage());
                     }
                 }
         );
     }
 
-    private void showQuestionByIndex() {
-        if (selectedQuestions == null || selectedQuestions.isEmpty()) {
-            tvQuestion.setText("출제 가능한 문제가 없습니다.");
-            btnSubmit.setEnabled(false);
-            return;
+    private void showNoQuestionMessage(String message) {
+        tvQuestion.setText(
+                "출제 가능한 문제가 없습니다.\n"
+                        + "과목 번호: " + currentSubjectId + "\n"
+                        + "난이도: " + getDifficultyKoreanName(currentDifficultyLevel) + "\n\n"
+                        + message
+        );
+        btnSubmit.setEnabled(false);
+    }
+
+    private int calculateTargetScore(List<QuizQuestion> questions) {
+        int sum = 0;
+
+        for (QuizQuestion question : questions) {
+            sum += getQuestionScore(question);
         }
 
-        if (currentQuestionIndex >= selectedQuestions.size()) {
+        return sum;
+    }
+
+    private void bindCurrentQuestion() {
+        if (currentQuestionIndex >= questionList.size()) {
             completeStageIfClear();
             showFinalResult();
             return;
         }
 
-        currentQuestion = selectedQuestions.get(currentQuestionIndex);
+        currentQuestion = questionList.get(currentQuestionIndex);
 
         bindQuestion(currentQuestion);
+
         radioGroup.clearCheck();
         updateOptionBackgrounds();
 
@@ -221,15 +233,13 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
-        String difficultyText = getDifficultyKoreanName(question.getDifficultyLevel());
-        int questionNumber = currentQuestionIndex + 1;
-        int totalQuestionCount = selectedQuestions.size();
+        String progressText = "문제 "
+                + (currentQuestionIndex + 1)
+                + " / "
+                + questionList.size()
+                + "\n\n";
 
-        tvQuestion.setText(
-                "[" + questionNumber + " / " + totalQuestionCount + "] "
-                        + "(" + difficultyText + ") "
-                        + question.getQuestion()
-        );
+        tvQuestion.setText(progressText + question.getQuestion());
 
         String[] options = question.getOptions();
 
@@ -238,27 +248,19 @@ public class QuizPlayFragment extends Fragment {
         option3.setVisibility(View.GONE);
         option4.setVisibility(View.GONE);
 
-        option1.setChecked(false);
-        option2.setChecked(false);
-        option3.setChecked(false);
-        option4.setChecked(false);
-
         if (options != null) {
             if (options.length > 0) {
                 option1.setText(options[0]);
                 option1.setVisibility(View.VISIBLE);
             }
-
             if (options.length > 1) {
                 option2.setText(options[1]);
                 option2.setVisibility(View.VISIBLE);
             }
-
             if (options.length > 2) {
                 option3.setText(options[2]);
                 option3.setVisibility(View.VISIBLE);
             }
-
             if (options.length > 3) {
                 option4.setText(options[3]);
                 option4.setVisibility(View.VISIBLE);
@@ -306,10 +308,12 @@ public class QuizPlayFragment extends Fragment {
                 quizFaceImage.setImageResource(R.drawable.face_happy);
             }
 
-            int goldToAdd = calculateGold();
-            earnedGold += goldToAdd;
+            int scoreToAdd = getQuestionScore(currentQuestion);
 
-            playEffect(R.raw.success, "정답입니다!\n+" + goldToAdd + "G");
+            earnedScore += scoreToAdd;
+            earnedGold += scoreToAdd;
+
+            playEffect(R.raw.success, "정답입니다!\n+" + scoreToAdd + "점");
         } else {
             if (quizFaceImage != null) {
                 quizFaceImage.setImageResource(R.drawable.face_sad);
@@ -325,7 +329,6 @@ public class QuizPlayFragment extends Fragment {
 
         lottieEffect.setAnimation(rawResId);
         lottieEffect.playAnimation();
-
         lottieEffect.removeAllAnimatorListeners();
 
         lottieEffect.addAnimatorListener(new android.animation.Animator.AnimatorListener() {
@@ -339,15 +342,8 @@ public class QuizPlayFragment extends Fragment {
 
                 layoutResult.postDelayed(() -> {
                     layoutResult.setVisibility(View.GONE);
-
-                    // 기존 방식:
-                    // currentQuestionId++;
-                    // loadQuestion(currentSubjectId, currentQuestionId, currentDifficultyLevel);
-                    //
-                    // 수정 방식:
-                    // 이미 선별된 문제 리스트에서 다음 문제로 이동한다.
                     currentQuestionIndex++;
-                    showQuestionByIndex();
+                    bindCurrentQuestion();
                 }, 500);
             }
 
@@ -361,27 +357,57 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
-    private int calculateGold() {
-        if (currentQuestion == null) {
+    /*
+     * 점수 기준:
+     * 하: 10점
+     * 중: 20점
+     * 상: 30점
+     *
+     * Firebase에 difficulty_level이 없을 경우에는
+     * 사용자가 선택한 난이도를 기준으로 점수를 계산한다.
+     */
+    private int getQuestionScore(QuizQuestion question) {
+        if (question == null) {
             return 0;
         }
 
-        // 냅색 점수와 골드 보상을 통일
-        // easy = 15, normal = 30, hard = 45
-        return QuizSelector.getScoreByDifficulty(
-                currentQuestion.getDifficultyLevel()
-        );
+        String level = question.getDifficultyLevel();
+
+        if (level == null || level.trim().isEmpty()) {
+            level = currentDifficultyLevel;
+        }
+
+        if ("hard".equals(level)) {
+            return 30;
+        }
+
+        if ("normal".equals(level)) {
+            return 20;
+        }
+
+        return 10;
     }
 
+    private int getClearScore() {
+        return (int) Math.ceil(targetScore * CLEAR_RATE_BY_TARGET_SCORE);
+    }
+
+    /*
+     * 변경된 클리어 기준:
+     * 문제 개수 기준 X
+     * 정답률 기준 X
+     * 타겟 점수의 80% 이상이면 클리어
+     *
+     * 다음 단계 해금은 상 난이도 클리어 시에만 수행.
+     */
     private void completeStageIfClear() {
-        if (totalSolvedCount == 0) {
+        if (targetScore <= 0) {
             return;
         }
 
-        double correctRate = ((double) correctCount / totalSolvedCount) * 100.0;
+        boolean isClear = earnedScore >= getClearScore();
 
-        // 70% 이상이면 클리어
-        if (correctRate < 70.0) {
+        if (!isClear) {
             return;
         }
 
@@ -390,28 +416,37 @@ public class QuizPlayFragment extends Fragment {
 
         SharedPreferences.Editor editor = prefs.edit();
 
-        // 현재 과목 + 현재 난이도 클리어 저장
-        editor.putInt(
-                "subject_" + currentSubjectId + "_" + currentDifficultyLevel + "_clear",
-                1
-        );
+        // 현재 과목의 현재 난이도 클리어 기록
+        editor.putInt("subject_" + currentSubjectId + "_" + currentDifficultyLevel + "_clear", 1);
 
-        // 기존 단계 해금 구조 유지
-        editor.putInt("stage_" + currentSubjectId + "_clear", 1);
-        editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
+        /*
+         * 상 난이도 클리어 시에만 다음 단계 해금.
+         * 예:
+         * 알고리즘 상 문제 클리어 -> 실전문제 1 해금
+         */
+        if ("hard".equals(currentDifficultyLevel)) {
+            editor.putInt("stage_" + currentSubjectId + "_clear", 1);
+            editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
+        }
 
         editor.apply();
 
-        com.google.firebase.auth.FirebaseAuth mAuth =
-                com.google.firebase.auth.FirebaseAuth.getInstance();
+        /*
+         * Firebase에도 다음 단계 해금 상태 저장.
+         * 로그인하지 않은 상태면 SharedPreferences만 사용.
+         */
+        if ("hard".equals(currentDifficultyLevel)) {
+            com.google.firebase.auth.FirebaseAuth mAuth =
+                    com.google.firebase.auth.FirebaseAuth.getInstance();
 
-        if (mAuth.getCurrentUser() != null) {
-            String uid = mAuth.getCurrentUser().getUid();
+            if (mAuth.getCurrentUser() != null) {
+                String uid = mAuth.getCurrentUser().getUid();
 
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("users")
-                    .document(uid)
-                    .update("unlocked_stage_" + (currentSubjectId + 1), true);
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(uid)
+                        .update("unlocked_stage_" + (currentSubjectId + 1), true);
+            }
         }
     }
 
@@ -424,38 +459,39 @@ public class QuizPlayFragment extends Fragment {
             ((MainActivity) getActivity()).addGold(earnedGold);
         }
 
-        double correctRate = totalSolvedCount > 0
-                ? ((double) correctCount / totalSolvedCount) * 100.0
-                : 0.0;
-
-        boolean isClear = correctRate >= 70.0;
+        boolean isClear = targetScore > 0 && earnedScore >= getClearScore();
 
         String clearMessage;
 
         if (isClear) {
-            clearMessage =
-                    "과목 " + currentSubjectId
-                            + "의 "
-                            + getDifficultyKoreanName(currentDifficultyLevel)
-                            + " 난이도 클리어 성공!\n\n";
+            clearMessage = "과목 "
+                    + currentSubjectId
+                    + "의 "
+                    + getDifficultyKoreanName(currentDifficultyLevel)
+                    + " 난이도 클리어 성공!\n\n";
+
+            if ("hard".equals(currentDifficultyLevel)) {
+                clearMessage += "다음 단계가 해금되었습니다.\n\n";
+            }
         } else {
-            clearMessage =
-                    "과목 " + currentSubjectId
-                            + "의 "
-                            + getDifficultyKoreanName(currentDifficultyLevel)
-                            + " 난이도 클리어 실패\n"
-                            + "70% 이상 맞혀야 클리어됩니다.\n\n";
+            clearMessage = "과목 "
+                    + currentSubjectId
+                    + "의 "
+                    + getDifficultyKoreanName(currentDifficultyLevel)
+                    + " 난이도 클리어 실패\n"
+                    + "타겟 점수의 80% 이상을 획득해야 클리어됩니다.\n\n";
         }
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("퀴즈 결과")
                 .setMessage(
                         clearMessage
-                                + "총 출제 문제 수: " + selectedQuestions.size() + "문제\n"
                                 + "총 푼 문제 수: " + totalSolvedCount + "문제\n"
                                 + "맞춘 문제 수: " + correctCount + "문제\n"
-                                + "틀린 문제 수: " + (totalSolvedCount - correctCount) + "문제\n"
-                                + "정답률: " + String.format("%.1f", correctRate) + "%\n"
+                                + "틀린 문제 수: " + (totalSolvedCount - correctCount) + "문제\n\n"
+                                + "획득 점수: " + earnedScore + "점\n"
+                                + "타겟 점수: " + targetScore + "점\n"
+                                + "클리어 기준 점수: " + getClearScore() + "점\n"
                                 + "획득 골드: " + earnedGold + "G"
                 )
                 .setCancelable(false)
@@ -483,27 +519,19 @@ public class QuizPlayFragment extends Fragment {
 
     private void updateOptionBackgrounds() {
         option1.setBackgroundResource(
-                option1.isChecked()
-                        ? R.drawable.bg_quiz_option_selected
-                        : R.drawable.bg_message_box
+                option1.isChecked() ? R.drawable.bg_quiz_option_selected : R.drawable.bg_message_box
         );
 
         option2.setBackgroundResource(
-                option2.isChecked()
-                        ? R.drawable.bg_quiz_option_selected
-                        : R.drawable.bg_message_box
+                option2.isChecked() ? R.drawable.bg_quiz_option_selected : R.drawable.bg_message_box
         );
 
         option3.setBackgroundResource(
-                option3.isChecked()
-                        ? R.drawable.bg_quiz_option_selected
-                        : R.drawable.bg_message_box
+                option3.isChecked() ? R.drawable.bg_quiz_option_selected : R.drawable.bg_message_box
         );
 
         option4.setBackgroundResource(
-                option4.isChecked()
-                        ? R.drawable.bg_quiz_option_selected
-                        : R.drawable.bg_message_box
+                option4.isChecked() ? R.drawable.bg_quiz_option_selected : R.drawable.bg_message_box
         );
     }
 

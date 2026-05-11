@@ -3,13 +3,14 @@ package com.example.term_project;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class QuizRepository {
 
-    private FirebaseFirestore db;
+    private final FirebaseFirestore db;
 
-    // Firestore 구조
     private final String ROOT_COLLECTION = "subjects";
     private final String SUB_COLLECTION = "quizzes";
 
@@ -21,126 +22,27 @@ public class QuizRepository {
         void onSuccess(QuizQuestion question);
         void onFailure(Exception e);
     }
+
     public interface OnQuestionsFetchedListener {
         void onSuccess(List<QuizQuestion> questions);
         void onFailure(Exception e);
     }
+
     /*
-     * 현재 사용 버전
+     * 새 방식:
+     * quiz_id를 1,2,3... 순서로 하나씩 찾지 않고,
+     * 해당 과목의 quizzes 전체를 가져온 뒤 앱에서 필터링한다.
      *
-     * 목적:
-     * - 원본 레포지토리 방식과 동일하게 문제를 가져온다.
-     * - subject_id + quiz_id 조건만 사용한다.
-     * - difficulty_level은 검색 조건으로 사용하지 않는다.
-     *
-     * 이유:
-     * - Firebase에 조원이 넣어둔 기존 문제 구조가 아직 확실하지 않음.
-     * - difficulty_level 값이 없거나 normal/easy/hard와 다르면 문제가 안 뜰 수 있음.
-     * - 따라서 우선 원본 방식으로 문제를 정상 출력시키는 것이 우선.
-     *
-     * QuizPlayFragment에서는 difficultyLevel을 넘겨주지만,
-     * 여기서는 아직 검색 조건에 사용하지 않는다.
+     * 장점:
+     * - quiz_id가 중간에 비어 있어도 끊기지 않음
+     * - Firebase에 문제가 10개 이상 있으면 최대 10개까지 출제 가능
+     * - difficulty_level 필드가 없어도 fallback으로 동작 가능
      */
-    @SuppressWarnings("unchecked")
-    public void getAllQuizQuestionsBySubject(
+    public void getQuizQuestionsFromFirestore(
             int subjectId,
-            OnQuestionsFetchedListener listener
-    ) {
-        db.collection(ROOT_COLLECTION)
-                .whereEqualTo("subject_id", subjectId)
-                .get()
-                .addOnSuccessListener(subjectDocs -> {
-                    if (subjectDocs.isEmpty()) {
-                        listener.onFailure(
-                                new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다.")
-                        );
-                        return;
-                    }
-
-                    DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
-
-                    subjectDoc.getReference()
-                            .collection(SUB_COLLECTION)
-                            .get()
-                            .addOnSuccessListener(quizDocs -> {
-                                List<QuizQuestion> result = new java.util.ArrayList<>();
-
-                                for (DocumentSnapshot doc : quizDocs.getDocuments()) {
-                                    String questionText = doc.getString("question");
-
-                                    Object optionsObj = doc.get("answer_choice");
-                                    List<String> optionsList = null;
-
-                                    if (optionsObj instanceof List) {
-                                        optionsList = (List<String>) optionsObj;
-                                    }
-
-                                    int answerIndex = 0;
-                                    Object correctObj = doc.get("answer_correct");
-
-                                    if (correctObj instanceof Number) {
-                                        answerIndex = ((Number) correctObj).intValue();
-                                    } else if (correctObj instanceof String) {
-                                        try {
-                                            answerIndex = Integer.parseInt((String) correctObj);
-                                        } catch (Exception ignored) {
-                                            answerIndex = 0;
-                                        }
-                                    }
-
-                                    int quizId = 0;
-                                    Object quizIdObj = doc.get("quiz_id");
-
-                                    if (quizIdObj instanceof Number) {
-                                        quizId = ((Number) quizIdObj).intValue();
-                                    } else if (quizIdObj instanceof String) {
-                                        try {
-                                            quizId = Integer.parseInt((String) quizIdObj);
-                                        } catch (Exception ignored) {
-                                            quizId = 0;
-                                        }
-                                    }
-
-                                    String difficulty = doc.getString("difficulty_level");
-                                    String diff = difficulty != null ? difficulty : "easy";
-
-                                    if (questionText != null
-                                            && optionsList != null
-                                            && !optionsList.isEmpty()) {
-
-                                        String[] options = optionsList.toArray(new String[0]);
-
-                                        result.add(new QuizQuestion(
-                                                quizId,
-                                                questionText,
-                                                options,
-                                                answerIndex,
-                                                diff
-                                        ));
-                                    }
-                                }
-
-                                if (result.isEmpty()) {
-                                    listener.onFailure(
-                                            new Exception("출제 가능한 문제가 없습니다.")
-                                    );
-                                } else {
-                                    listener.onSuccess(result);
-                                }
-                            })
-                            .addOnFailureListener(e -> listener.onFailure(
-                                    new Exception("문제 목록 읽기 실패: " + e.getMessage())
-                            ));
-                })
-                .addOnFailureListener(e -> listener.onFailure(
-                        new Exception("과목 데이터 읽기 실패: " + e.getMessage())
-                ));
-    }
-    public void getQuizQuestionFromFirestore(
-            int subjectId,
-            int questionId,
             String difficultyLevel,
-            OnQuestionFetchedListener listener
+            int maxQuestionCount,
+            OnQuestionsFetchedListener listener
     ) {
         db.collection(ROOT_COLLECTION)
                 .whereEqualTo("subject_id", subjectId)
@@ -148,42 +50,55 @@ public class QuizRepository {
                 .addOnSuccessListener(subjectDocs -> {
                     if (!subjectDocs.isEmpty()) {
                         DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
-
-                        // 원본 방식: quiz_id만으로 문제 검색
-                        subjectDoc.getReference()
-                                .collection(SUB_COLLECTION)
-                                .whereEqualTo("quiz_id", questionId)
-                                .get()
-                                .addOnSuccessListener(quizDocs -> {
-                                    if (!quizDocs.isEmpty()) {
-                                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
-                                    } else {
-                                        tryStringQuizId(subjectDoc, subjectId, questionId, listener);
-                                    }
-                                })
-                                .addOnFailureListener(e ->
-                                        listener.onFailure(
-                                                new Exception("문제 데이터 읽기 실패: " + e.getMessage())
-                                        )
-                                );
+                        fetchQuizList(subjectDoc, subjectId, difficultyLevel, maxQuestionCount, listener);
                     } else {
-                        tryStringSubjectId(subjectId, questionId, listener);
+                        tryStringSubjectId(subjectId, difficultyLevel, maxQuestionCount, listener);
                     }
                 })
-                .addOnFailureListener(e ->
-                        listener.onFailure(
-                                new Exception("과목 데이터 읽기 실패: " + e.getMessage())
-                        )
-                );
+                .addOnFailureListener(e -> listener.onFailure(
+                        new Exception("과목 데이터 읽기 실패: " + e.getMessage())
+                ));
     }
 
     /*
-     * subject_id가 문자열 "1" 형태로 저장되어 있을 경우 대비
+     * 기존 코드 호환용 메서드.
+     * 혹시 다른 파일에서 이 메서드를 아직 쓰고 있어도 컴파일 오류가 안 나도록 유지.
      */
-    private void tryStringSubjectId(
+    public void getQuizQuestionFromFirestore(
             int subjectId,
             int questionId,
+            String difficultyLevel,
             OnQuestionFetchedListener listener
+    ) {
+        getQuizQuestionsFromFirestore(subjectId, difficultyLevel, 10, new OnQuestionsFetchedListener() {
+            @Override
+            public void onSuccess(List<QuizQuestion> questions) {
+                if (questions == null || questions.isEmpty()) {
+                    listener.onFailure(new Exception("출제 가능한 문제가 없습니다."));
+                    return;
+                }
+
+                int index = questionId - 1;
+
+                if (index >= 0 && index < questions.size()) {
+                    listener.onSuccess(questions.get(index));
+                } else {
+                    listener.onFailure(new Exception("문제 번호(" + questionId + ")를 찾을 수 없습니다."));
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                listener.onFailure(e);
+            }
+        });
+    }
+
+    private void tryStringSubjectId(
+            int subjectId,
+            String difficultyLevel,
+            int maxQuestionCount,
+            OnQuestionsFetchedListener listener
     ) {
         db.collection(ROOT_COLLECTION)
                 .whereEqualTo("subject_id", String.valueOf(subjectId))
@@ -191,78 +106,84 @@ public class QuizRepository {
                 .addOnSuccessListener(subjectDocs -> {
                     if (!subjectDocs.isEmpty()) {
                         DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
-
-                        subjectDoc.getReference()
-                                .collection(SUB_COLLECTION)
-                                .whereEqualTo("quiz_id", questionId)
-                                .get()
-                                .addOnSuccessListener(quizDocs -> {
-                                    if (!quizDocs.isEmpty()) {
-                                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
-                                    } else {
-                                        tryStringQuizId(subjectDoc, subjectId, questionId, listener);
-                                    }
-                                })
-                                .addOnFailureListener(e ->
-                                        listener.onFailure(
-                                                new Exception("문제 데이터 읽기 실패: " + e.getMessage())
-                                        )
-                                );
+                        fetchQuizList(subjectDoc, subjectId, difficultyLevel, maxQuestionCount, listener);
                     } else {
-                        listener.onFailure(
-                                new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다.")
-                        );
+                        listener.onFailure(new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다."));
                     }
                 })
-                .addOnFailureListener(e ->
-                        listener.onFailure(
-                                new Exception("과목 데이터 읽기 실패: " + e.getMessage())
-                        )
-                );
+                .addOnFailureListener(e -> listener.onFailure(
+                        new Exception("과목 데이터 읽기 실패: " + e.getMessage())
+                ));
     }
 
-    /*
-     * quiz_id가 문자열 "1" 형태로 저장되어 있을 경우 대비
-     */
-    private void tryStringQuizId(
+    private void fetchQuizList(
             DocumentSnapshot subjectDoc,
             int subjectId,
-            int questionId,
-            OnQuestionFetchedListener listener
+            String selectedDifficultyLevel,
+            int maxQuestionCount,
+            OnQuestionsFetchedListener listener
     ) {
         subjectDoc.getReference()
                 .collection(SUB_COLLECTION)
-                .whereEqualTo("quiz_id", String.valueOf(questionId))
                 .get()
                 .addOnSuccessListener(quizDocs -> {
-                    if (!quizDocs.isEmpty()) {
-                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
-                    } else {
-                        listener.onFailure(
-                                new Exception("문제 번호(" + questionId + ")를 찾을 수 없습니다.")
-                        );
+                    List<QuizQuestion> allQuestions = new ArrayList<>();
+                    List<QuizQuestion> difficultyMatchedQuestions = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : quizDocs.getDocuments()) {
+                        QuizQuestion question = parseQuestion(doc, subjectId, selectedDifficultyLevel);
+
+                        if (question == null) {
+                            continue;
+                        }
+
+                        allQuestions.add(question);
+
+                        if (selectedDifficultyLevel.equals(question.getDifficultyLevel())) {
+                            difficultyMatchedQuestions.add(question);
+                        }
                     }
+
+                    List<QuizQuestion> result;
+
+                    /*
+                     * Firebase에 difficulty_level이 제대로 들어가 있으면 해당 난이도만 출제.
+                     * 아직 difficulty_level이 없거나 값이 불일치하면 전체 문제를 fallback으로 사용.
+                     */
+                    if (!difficultyMatchedQuestions.isEmpty()) {
+                        result = difficultyMatchedQuestions;
+                    } else {
+                        result = allQuestions;
+                    }
+
+                    if (result.isEmpty()) {
+                        listener.onFailure(new Exception("출제 가능한 문제가 없습니다."));
+                        return;
+                    }
+
+                    Collections.shuffle(result);
+
+                    if (result.size() > maxQuestionCount) {
+                        result = new ArrayList<>(result.subList(0, maxQuestionCount));
+                    }
+
+                    listener.onSuccess(result);
                 })
-                .addOnFailureListener(e ->
-                        listener.onFailure(
-                                new Exception("문제 데이터 읽기 실패: " + e.getMessage())
-                        )
-                );
+                .addOnFailureListener(e -> listener.onFailure(
+                        new Exception("문제 데이터 읽기 실패: " + e.getMessage())
+                ));
     }
 
-    /*
-     * Firestore 문서를 QuizQuestion 객체로 변환
-     */
     @SuppressWarnings("unchecked")
-    private void parseAndSend(
+    private QuizQuestion parseQuestion(
             DocumentSnapshot doc,
             int subjectId,
-            OnQuestionFetchedListener listener
+            String selectedDifficultyLevel
     ) {
         String questionText = doc.getString("question");
 
-        List<String> optionsList = null;
         Object optionsObj = doc.get("answer_choice");
+        List<String> optionsList = null;
 
         if (optionsObj instanceof List) {
             optionsList = (List<String>) optionsObj;
@@ -281,130 +202,44 @@ public class QuizRepository {
             }
         }
 
-        if (questionText != null && optionsList != null && !optionsList.isEmpty()) {
-            String[] options = optionsList.toArray(new String[0]);
-
-            /*
-             * difficulty_level은 읽기만 한다.
-             * 현재는 검색 조건으로 쓰지 않는다.
-             *
-             * Firestore에 difficulty_level이 없으면 기본값 easy로 처리한다.
-             */
-            String difficulty = doc.getString("difficulty_level");
-            String diff = difficulty != null ? difficulty : "easy";
-
-            /*
-             * 주의:
-             * 원본 코드에서는 첫 번째 인자로 subjectId를 넣고 있었음.
-             * 현재 QuizQuestion 생성자가
-             * QuizQuestion(int quizId, String question, String[] options, int correctAnswerIndex, String difficultyLevel)
-             * 형태라면 subjectId 대신 quizId를 넣는 게 더 정확함.
-             *
-             * 다만 기존 원본 호환을 우선하려면 subjectId를 넣어도 앱 동작에는 큰 영향이 없을 수 있음.
-             */
-            QuizQuestion question = new QuizQuestion(
-                    subjectId,
-                    questionText,
-                    options,
-                    answerIndex,
-                    diff
-            );
-
-            listener.onSuccess(question);
-        } else {
-            listener.onFailure(
-                    new Exception("question 또는 answer_choice 데이터가 비어있습니다.")
-            );
+        if (questionText == null || optionsList == null || optionsList.isEmpty()) {
+            return null;
         }
+
+        int quizId = subjectId;
+        Object quizIdObj = doc.get("quiz_id");
+
+        if (quizIdObj instanceof Number) {
+            quizId = ((Number) quizIdObj).intValue();
+        } else if (quizIdObj instanceof String) {
+            try {
+                quizId = Integer.parseInt((String) quizIdObj);
+            } catch (Exception ignored) {
+                quizId = subjectId;
+            }
+        }
+
+        String difficulty = doc.getString("difficulty_level");
+
+        /*
+         * Firebase에 difficulty_level이 없으면
+         * 사용자가 선택한 난이도를 현재 문제 난이도로 간주한다.
+         *
+         * 이렇게 해야 상 문제를 선택했는데도
+         * getDifficultyLevel()이 easy로 들어가 점수가 10점으로 계산되는 문제를 막을 수 있다.
+         */
+        if (difficulty == null || difficulty.trim().isEmpty()) {
+            difficulty = selectedDifficultyLevel;
+        }
+
+        String[] options = optionsList.toArray(new String[0]);
+
+        return new QuizQuestion(
+                quizId,
+                questionText,
+                options,
+                answerIndex,
+                difficulty
+        );
     }
-
-    /*
-     =====================================================================
-     나중에 Firebase 구조 확인 후 교체할 난이도 필터 버전
-     =====================================================================
-
-     아래 코드는 아직 사용하지 마세요.
-
-     사용 조건:
-     1. 각 문제 문서에 difficulty_level 필드가 있어야 함.
-     2. 값은 반드시 아래 중 하나여야 함.
-        - easy
-        - normal
-        - hard
-     3. 각 난이도별 quiz_id가 1부터 순서대로 있어야 함.
-
-     예시:
-     subjects
-      └─ 과목문서
-          ├─ subject_id: 1
-          └─ quizzes
-              ├─ 문제문서
-              │   ├─ quiz_id: 1
-              │   ├─ difficulty_level: "normal"
-              │   ├─ question: "문제 내용"
-              │   ├─ answer_choice: ["보기1", "보기2", "보기3", "보기4"]
-              │   └─ answer_correct: 0
-
-     나중에 이 버전으로 바꾸려면:
-     - 위의 현재 getQuizQuestionFromFirestore() 메서드 내부 검색 부분에서
-       .whereEqualTo("quiz_id", questionId)
-       아래에
-       .whereEqualTo("difficulty_level", difficultyLevel)
-       을 추가하면 됨.
-
-     정확한 교체 코드는 아래 참고.
-     */
-
-    /*
-    public void getQuizQuestionFromFirestore(
-            int subjectId,
-            int questionId,
-            String difficultyLevel,
-            OnQuestionFetchedListener listener
-    ) {
-        db.collection(ROOT_COLLECTION)
-                .whereEqualTo("subject_id", subjectId)
-                .get()
-                .addOnSuccessListener(subjectDocs -> {
-                    if (!subjectDocs.isEmpty()) {
-                        DocumentSnapshot subjectDoc = subjectDocs.getDocuments().get(0);
-
-                        subjectDoc.getReference()
-                                .collection(SUB_COLLECTION)
-                                .whereEqualTo("quiz_id", questionId)
-                                .whereEqualTo("difficulty_level", difficultyLevel)
-                                .get()
-                                .addOnSuccessListener(quizDocs -> {
-                                    if (!quizDocs.isEmpty()) {
-                                        parseAndSend(quizDocs.getDocuments().get(0), subjectId, listener);
-                                    } else {
-                                        listener.onFailure(
-                                                new Exception(
-                                                        "과목 " + subjectId
-                                                                + "의 " + difficultyLevel
-                                                                + " 난이도 문제 번호("
-                                                                + questionId
-                                                                + ")를 찾을 수 없습니다."
-                                                )
-                                        );
-                                    }
-                                })
-                                .addOnFailureListener(e ->
-                                        listener.onFailure(
-                                                new Exception("문제 데이터 읽기 실패: " + e.getMessage())
-                                        )
-                                );
-                    } else {
-                        listener.onFailure(
-                                new Exception("DB에 과목 번호(" + subjectId + ")가 없습니다.")
-                        );
-                    }
-                })
-                .addOnFailureListener(e ->
-                        listener.onFailure(
-                                new Exception("과목 데이터 읽기 실패: " + e.getMessage())
-                        )
-                );
-    }
-    */
 }
