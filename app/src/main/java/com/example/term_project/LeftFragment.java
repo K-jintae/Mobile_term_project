@@ -22,8 +22,15 @@ public class LeftFragment extends Fragment {
     private LinearLayout cardQuiz1;
     private LinearLayout cardQuiz2;
     private LinearLayout cardQuiz3;
-    private LinearLayout cardLocked1;
-    private LinearLayout cardLocked2;
+
+    // --- 추가/수정된 부분 시작: 새 과목 변수 선언 ---
+    private LinearLayout cardQuiz4;
+    private LinearLayout cardQuiz5;
+    private LinearLayout cardQuiz6;
+    private LinearLayout cardQuiz7;
+    private LinearLayout cardQuiz8;
+    private LinearLayout cardQuiz9;
+    //-------------------------------
 
     public LeftFragment() {
         // 기본 생성자
@@ -40,8 +47,14 @@ public class LeftFragment extends Fragment {
         cardQuiz1 = view.findViewById(R.id.cardQuiz1);
         cardQuiz2 = view.findViewById(R.id.cardQuiz2);
         cardQuiz3 = view.findViewById(R.id.cardQuiz3);
-        cardLocked1 = view.findViewById(R.id.cardLocked1);
-        cardLocked2 = view.findViewById(R.id.cardLocked2);
+        // --- 추가/수정된 부분 시작: XML ID 연결 ---
+        cardQuiz4 = view.findViewById(R.id.cardQuiz4);
+        cardQuiz5 = view.findViewById(R.id.cardQuiz5);
+        cardQuiz6 = view.findViewById(R.id.cardQuiz6);
+        cardQuiz7 = view.findViewById(R.id.cardQuiz7);
+        cardQuiz8 = view.findViewById(R.id.cardQuiz8);
+        cardQuiz9 = view.findViewById(R.id.cardQuiz9);
+        // ------------
 
         loadProgressFromFirebase();
 
@@ -58,8 +71,13 @@ public class LeftFragment extends Fragment {
         setupCard(cardQuiz1, 1);
         setupCard(cardQuiz2, 2);
         setupCard(cardQuiz3, 3);
-        setupCard(cardLocked1, 4);
-        setupCard(cardLocked2, 5);
+        setupCard(cardQuiz4, 4);
+        setupCard(cardQuiz5, 5);
+        setupCard(cardQuiz6, 6);
+        setupCard(cardQuiz7, 7);
+        setupCard(cardQuiz8, 8);
+        setupCard(cardQuiz9, 9);
+        //--------------------------------
     }
 
     private void setupCard(LinearLayout card, int subjectId) {
@@ -69,12 +87,17 @@ public class LeftFragment extends Fragment {
 
         boolean canPlay = canPlayStage(subjectId);
 
+        // 추가 된 부분
+        View iconView = card.getChildAt(0);
+
         if (canPlay) {
             card.setAlpha(1.0f);
 
             // 핵심 변경:
             // 과목 카드를 누르면 바로 문제로 가지 않고 난이도 선택창을 띄운다.
             card.setOnClickListener(v -> showDifficultyDialog(subjectId));
+
+
 
         } else {
             card.setAlpha(0.5f);
@@ -152,7 +175,8 @@ public class LeftFragment extends Fragment {
                         if (doc.exists() && isAdded()) {
                             SharedPreferences.Editor editor = prefs.edit();
 
-                            for (int i = 2; i <= 5; i++) {
+                            //변경: 11단계까지 확인하도록 범위를 늘림
+                            for (int i = 2; i <= 11; i++) {
                                 Boolean isUnlocked = doc.getBoolean("unlocked_stage_" + i);
 
                                 if (isUnlocked != null && isUnlocked) {
