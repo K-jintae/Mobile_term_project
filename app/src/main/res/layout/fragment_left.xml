@@ -87,7 +87,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- 1 -->
+            <!-- 1: C언어 -->
             <LinearLayout
                 android:id="@+id/cardQuiz1"
                 android:layout_width="match_parent"
@@ -121,7 +121,7 @@
                         android:id="@+id/tvQuizTitle1"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="C"
+                        android:text="C언어"
                         android:textColor="#222222"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -137,7 +137,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 2 -->
+            <!-- 2: DB -->
             <LinearLayout
                 android:id="@+id/cardQuiz2"
                 android:layout_width="match_parent"
@@ -187,7 +187,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 3 -->
+            <!-- 3: 알고리즘 -->
             <LinearLayout
                 android:id="@+id/cardQuiz3"
                 android:layout_width="match_parent"
@@ -237,25 +237,28 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 잠금 4 -->
+            <!-- 4: 객체지향프로그래밍 -->
             <LinearLayout
-                android:id="@+id/cardLocked1"
+                android:id="@+id/cardQuiz4"
                 android:layout_width="match_parent"
                 android:layout_height="88dp"
                 android:layout_marginBottom="14dp"
                 android:background="@drawable/bg_message_box"
-                android:alpha="0.72"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
+                <TextView
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:src="@android:drawable/ic_lock_lock"
-                    android:contentDescription="잠금" />
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="4"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -268,7 +271,7 @@
                         android:id="@+id/tvQuizTitle4"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="실전 문제 1"
+                        android:text="객체지향프로그래밍"
                         android:textColor="#222222"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -278,31 +281,34 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="개념 중급 클리어 후 해금"
+                        android:text="Java와 OOP의 핵심 개념 이해"
                         android:textColor="#444444"
                         android:textSize="13sp" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 잠금 5 -->
+            <!-- 5: 인공지능개론 -->
             <LinearLayout
-                android:id="@+id/cardLocked2"
+                android:id="@+id/cardQuiz5"
                 android:layout_width="match_parent"
                 android:layout_height="88dp"
                 android:layout_marginBottom="14dp"
                 android:background="@drawable/bg_message_box"
-                android:alpha="0.72"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
+                <TextView
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:src="@android:drawable/ic_lock_lock"
-                    android:contentDescription="잠금" />
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="5"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -315,7 +321,7 @@
                         android:id="@+id/tvQuizTitle5"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="실전 문제 2"
+                        android:text="인공지능개론"
                         android:textColor="#222222"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -325,7 +331,207 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="개념 중급 클리어 후 해금"
+                        android:text="머신러닝과 딥러닝 기초 이해"
+                        android:textColor="#444444"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 6: 데이터과학 -->
+            <LinearLayout
+                android:id="@+id/cardQuiz6"
+                android:layout_width="match_parent"
+                android:layout_height="88dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_message_box"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="6"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvQuizTitle6"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="데이터과학"
+                        android:textColor="#222222"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvQuizDesc6"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="데이터 분석과 통계의 기초"
+                        android:textColor="#444444"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 7: 컴퓨터네트워크 -->
+            <LinearLayout
+                android:id="@+id/cardQuiz7"
+                android:layout_width="match_parent"
+                android:layout_height="88dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_message_box"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="7"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvQuizTitle7"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="컴퓨터네트워크"
+                        android:textColor="#222222"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvQuizDesc7"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="네트워크 프로토콜과 통신 이해"
+                        android:textColor="#444444"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 8: 자료구조 -->
+            <LinearLayout
+                android:id="@+id/cardQuiz8"
+                android:layout_width="match_parent"
+                android:layout_height="88dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_message_box"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="8"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvQuizTitle8"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="자료구조"
+                        android:textColor="#222222"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvQuizDesc8"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="스택, 큐, 트리 등 자료구조 이해"
+                        android:textColor="#444444"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 9: 운영체제 -->
+            <LinearLayout
+                android:id="@+id/cardQuiz9"
+                android:layout_width="match_parent"
+                android:layout_height="88dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_message_box"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_circle_button"
+                    android:gravity="center"
+                    android:text="9"
+                    android:textColor="#2B2B2B"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvQuizTitle9"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="운영체제"
+                        android:textColor="#222222"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvQuizDesc9"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="프로세스와 메모리 관리 기초"
                         android:textColor="#444444"
                         android:textSize="13sp" />
                 </LinearLayout>
