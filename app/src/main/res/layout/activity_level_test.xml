@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app ="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E0DDD5">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#F2EFE9">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:id="@+id/testTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="몸 풀기 퀴즈!"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_gravity="center"
+                android:layout_marginBottom="20dp"
+                android:textColor="#000000"/>
+
+            <LinearLayout
+                android:id="@+id/actualQuizLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvQuizQuestion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text = "문제를 불러오는 중.."
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:layout_marginBottom="10dp"/>
+
+                <RadioGroup
+                    android:id="@+id/radioGroupOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/LT_option1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_message_box"
+                        android:padding="16dp"
+                        android:text="보기 1"
+                        android:textColor="#2B2B2B"
+                        android:textSize="16sp"
+                        android:textStyle="bold"/>
+
+                    <RadioButton
+                        android:id="@+id/LT_option2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_message_box"
+                        android:padding="16dp"
+                        android:text="보기 2"
+                        android:textColor="#2B2B2B"
+                        android:textSize="16sp"
+                        android:textStyle="bold"/>
+
+                    <RadioButton
+                        android:id="@+id/LT_option3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_message_box"
+                        android:padding="16dp"
+                        android:text="보기 3"
+                        android:textColor="#2B2B2B"
+                        android:textSize="16sp"
+                        android:textStyle="bold"/>
+
+                    <RadioButton
+                        android:id="@+id/LT_option4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/bg_message_box"
+                        android:padding="16dp"
+                        android:text="보기 4"
+                        android:textColor="#2B2B2B"
+                        android:textSize="16sp"
+                        android:textStyle="bold"/>
+                </RadioGroup>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/LT_btnSubmit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:background="#E57373"
+                    android:padding="16dp"
+                    android:text="정답 확인"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>

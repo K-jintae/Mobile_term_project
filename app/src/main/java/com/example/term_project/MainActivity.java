@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREF_USER_STATE = "user_state";
     private static final String KEY_LAST_LOGIN_TIME = "last_login_time";
     private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
-    private static final long TWO_DAYS_MILLIS = 2 * 1000L;
+    private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
