@@ -228,8 +228,8 @@ public class MainFragment extends Fragment {
             // 1. 팝업은 정상적으로 닫습니다.
             //hideHelpPopup(null);
 
-            // 2. 🔥 임시 DB 세팅: 3번 과목(Algorithms)에 10개의 빈 문제 생성
-            //createEmptyQuizTemplatesAutoID(2, 25);
+            // 2. 🔥 임시 DB 세팅: 0번 과목(Algorithms)에 1개의 빈 문제 생성
+            //createEmptyQuizTemplatesAutoID(0, 1);
         //});
 
         return view;

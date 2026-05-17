@@ -170,7 +170,7 @@ public class QuizPlayFragment extends Fragment {
                 if (!isAdded()) {
                     return;
                 }
-
+                android.util.Log.e("QUIZ_DEBUG", "퀴즈 불러오기 실패 원인: " + e.getMessage());
                 // 첫 문제부터 못 불러오면 해당 과목 문제 데이터가 없는 상태
                 if (currentQuestionId == 1) {
                     tvQuestion.setText("문제를 찾을 수 없습니다.");

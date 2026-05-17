@@ -1,5 +1,6 @@
 package com.example.term_project;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -7,14 +8,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.content.Context;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
-import android.widget.ArrayAdapter;
 
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -48,6 +45,14 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private GoogleSignInClient mGoogleSignInClient;
+
+    private QuizRepository repository;
+
+    private QuizQuestion currentQuiz;
+
+    private LinearLayout levelTestLayout;
+
+    private TextView tvQuizQuestion;
     private static final int RC_SIGN_IN = 9001; // 로그인 요청 코드
     // private TextView signupError;   activity_login.xml 파일에 id가 없다고 떠서 임시 비활성화 49줄과 연관
 
@@ -83,7 +88,6 @@ public class LoginActivity extends AppCompatActivity {
         pwError = findViewById(R.id.pwError);
         nameError = findViewById(R.id.nameError);
         checkIdBtn = findViewById(R.id.checkIdBtn);
-        MaterialAutoCompleteTextView levelDropdown;
 
         //signupBtn을 부르는 함수만 추가
         signupBtn = findViewById(R.id.signupBtn);
@@ -100,22 +104,6 @@ public class LoginActivity extends AppCompatActivity {
         backBtn.setOnClickListener(v -> {
             signupLayout.setVisibility(View.GONE);
         });
-
-        //레벨 선택 드롭다운 메뉴
-        levelDropdown = findViewById(R.id.levelDropdown);
-        String[] levels = {
-                "초급",
-                "중급",
-                "고급"
-        };
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                R.layout.dropdown_item,
-                levels
-        );
-
-        levelDropdown.setAdapter(adapter);
 
         // 아이디 중복 확인
         checkIdBtn.setOnClickListener(v -> {
@@ -177,7 +165,6 @@ public class LoginActivity extends AppCompatActivity {
             public void afterTextChanged(android.text.Editable s) {
             }
         });
-
 
 
         // 회원가입
@@ -247,15 +234,6 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            //레벨 테스트 선택 여부 검사
-            String selfLevel = levelDropdown.getText().toString().trim();
-
-            if (selfLevel.isEmpty()) {
-                Toast.makeText(this,
-                        "레벨을 선택해주세요.",
-                        Toast.LENGTH_SHORT).show();
-                return;
-            }
 
             // 1. 파이어베이스 인증용 가짜 이메일 생성
             String email = id + "@termproject.com";
@@ -311,9 +289,23 @@ public class LoginActivity extends AppCompatActivity {
             mAuth.signInWithEmailAndPassword(email, inputPw)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
-                            // 로그인 성공 시 메인 화면으로 이동
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                            finish();
+                            //회원가입 후 로그인했을 때, 레벨테스트를 한 계정인지 아닌지를 확인
+                            String uid = mAuth.getCurrentUser().getUid();
+                            db.collection("users").document(uid).get().addOnSuccessListener(documentSnapshot -> {
+                                if (documentSnapshot.exists()) {
+                                    Boolean isTested = documentSnapshot.getBoolean("isTest");
+
+                                    if (isTested == null || !isTested) {
+                                        Intent intent = new Intent(LoginActivity.this, LevelTestActivity.class);
+                                        startActivity(intent);
+                                        finish();
+                                    } else {
+                                        // 로그인 성공 시 메인 화면으로 이동
+                                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                        finish();
+                                    }
+                                }
+                            });
                         } else {
                             loginError.setText("아이디 또는 비밀번호가 틀렸습니다.");
                             loginError.setVisibility(View.VISIBLE);
@@ -321,27 +313,5 @@ public class LoginActivity extends AppCompatActivity {
                     });
         });
 
-    }
-
-    // 키보드 이외의 영역 누르면 키보드 사라지게 함
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        View focusView = getCurrentFocus();
-        if (focusView != null) {
-            // 터치된 좌표가 현재 포커스를 가진 View(EditText 등)의 안쪽인지 확인
-            android.graphics.Rect rect = new android.graphics.Rect();
-            focusView.getGlobalVisibleRect(rect);
-            int x = (int) ev.getX();
-            int y = (int) ev.getY();
-
-            // 터치 지점이 EditText 영역 밖이라면 키보드를 숨김
-            if (!rect.contains(x, y)) {
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
-                }
-                focusView.clearFocus(); // 포커스 해제
-            }
-        }
-        return super.dispatchTouchEvent(ev);
     }
 }
