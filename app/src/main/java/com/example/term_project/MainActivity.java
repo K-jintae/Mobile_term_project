@@ -1,5 +1,6 @@
 package com.example.term_project;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -74,6 +75,17 @@ public class MainActivity extends AppCompatActivity {
             String uid = mAuth.getCurrentUser().getUid();
             db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
+                    // 가장 먼저 레벨 테스트를 완료했는지 확인
+                    Boolean isTested = doc.getBoolean("isTested");
+
+                    // isTested 값이 없거나(null) false라면 레벨테스트 화면으로 강제 이동
+                    if (isTested == null || !isTested) {
+                        Intent intent = new Intent(MainActivity.this, LevelTestActivity.class);
+                        startActivity(intent);
+
+                        finish(); // MainActivity 종료
+                        return;   // 아래의 골드, 옷 불러오는 로직을 실행하지 않고 중단
+                    }
                     // 골드 로드
                     Long g = doc.getLong("gold");
                     this.gold = (g != null) ? g.intValue() : 0;
