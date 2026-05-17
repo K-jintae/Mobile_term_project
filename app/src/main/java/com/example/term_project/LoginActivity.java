@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
-
     LinearLayout signupLayout;
     EditText idInput, pwInput;
     EditText signupId, signupPw, signupName;
@@ -54,7 +53,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private TextView tvQuizQuestion;
     private static final int RC_SIGN_IN = 9001; // 로그인 요청 코드
-    // private TextView signupError;   activity_login.xml 파일에 id가 없다고 떠서 임시 비활성화 49줄과 연관
+    // private TextView signupError;   activity_login.xml 파일에 id가 없다고 떠서 임시 비활성화 49줄과 연관7;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,7 +165,6 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-
         // 회원가입
         signupBtn.setOnClickListener(v -> {
 
@@ -176,11 +174,11 @@ public class LoginActivity extends AppCompatActivity {
 
             String savedId = pref.getString("id", "");
 
+
             // 빈 값 검사
             idError.setVisibility(View.GONE);
             pwError.setVisibility(View.GONE);
             nameError.setVisibility(View.GONE);
-
 
             // 아이디 검사
             if (id.isEmpty()) {
@@ -233,7 +231,6 @@ public class LoginActivity extends AppCompatActivity {
                 nameError.setVisibility(View.VISIBLE);
                 return;
             }
-
 
             // 1. 파이어베이스 인증용 가짜 이메일 생성
             String email = id + "@termproject.com";
@@ -289,13 +286,14 @@ public class LoginActivity extends AppCompatActivity {
             mAuth.signInWithEmailAndPassword(email, inputPw)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
+
                             //회원가입 후 로그인했을 때, 레벨테스트를 한 계정인지 아닌지를 확인
                             String uid = mAuth.getCurrentUser().getUid();
                             db.collection("users").document(uid).get().addOnSuccessListener(documentSnapshot -> {
-                                if (documentSnapshot.exists()) {
+                                if(documentSnapshot.exists()) {
                                     Boolean isTested = documentSnapshot.getBoolean("isTest");
 
-                                    if (isTested == null || !isTested) {
+                                    if(isTested == null || !isTested) {
                                         Intent intent = new Intent(LoginActivity.this, LevelTestActivity.class);
                                         startActivity(intent);
                                         finish();
@@ -307,6 +305,7 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                             });
                         } else {
+
                             loginError.setText("아이디 또는 비밀번호가 틀렸습니다.");
                             loginError.setVisibility(View.VISIBLE);
                         }
