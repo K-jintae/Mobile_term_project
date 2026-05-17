@@ -91,8 +91,14 @@ public class LevelTestActivity extends AppCompatActivity {
 
         if(selectedIndex == currentQuiz.getCorrectAnswerIndex()){
             testCorrectCount++;
-            testCurrentIndex++;
-            loadRandomQuiz(0, testCurrentIndex);
+
+            // 현재 푼 문제가 총 문제 수(7)에 도달했는지 검사
+            if (testCurrentIndex >= TEST_TOTAL_COUNT) {
+                finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount); // 7개 다 맞추면 테스트 종료 (고수)
+            } else {
+                testCurrentIndex++;
+                loadRandomQuiz(0, testCurrentIndex);
+            }
         } else {
             finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount);
         }
@@ -102,11 +108,18 @@ public class LevelTestActivity extends AppCompatActivity {
         String userlevel = (correct >= 5) ? "고수" : (correct >= 3) ? "중수" : "하수";;
         String alertMessage = (correct >= 5) ? "축하해요!! 당신은 고수의 실력을 가졌군요!" : (correct >= 3) ? "오호라...중수 레벨이라니..." : "테스트 완료!! 같이 차차 공부해봐요!!";
 
+        int setKnapsackCapacityScore;
+        if (userlevel.equals("고수")) {
+            setKnapsackCapacityScore = 350;
+        } else if (userlevel.equals("중수")) {
+            setKnapsackCapacityScore = 250;
+        } else {
+            setKnapsackCapacityScore = 150;
+        }
         String uid = mAuth.getCurrentUser().getUid();
         Map<String, Object> updates = new HashMap<>();
         updates.put("isTested", true);
-        updates.put("level", userlevel);
-        updates.put("score", correct);
+        updates.put("knapsack_capacity_score", setKnapsackCapacityScore);
 
         db.collection("users").document(uid).update(updates).addOnSuccessListener(aVoid -> {
             AlertDialog dialog = new AlertDialog.Builder(this)

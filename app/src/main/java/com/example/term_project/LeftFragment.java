@@ -75,7 +75,7 @@ public class LeftFragment extends Fragment {
 
         if (canPlay) {
             card.setAlpha(1.0f);
-            card.setOnClickListener(v -> moveToQuizPlay(stageId));
+            card.setOnClickListener(v -> moveToDifficultySelect(stageId));
         } else {
             card.setAlpha(0.5f);
             card.setOnClickListener(v ->
@@ -151,6 +151,18 @@ public class LeftFragment extends Fragment {
         bundle.putInt("subject_id", stageId);
 
         QuizPlayFragment fragment = new QuizPlayFragment();
+        fragment.setArguments(bundle);
+
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openFragment(fragment);
+        }
+    }
+    /**난이도별 퀴즈 이동*/
+    private void moveToDifficultySelect (int stageId) {
+        Bundle bundle = new Bundle();
+        bundle.putInt("subject_id", stageId);
+
+        QuizDifficultyFragment fragment = new QuizDifficultyFragment();
         fragment.setArguments(bundle);
 
         if (getActivity() instanceof MainActivity) {

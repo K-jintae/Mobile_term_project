@@ -223,6 +223,14 @@ public class MainFragment extends Fragment {
         // 도움말 팝업 닫기 버튼
         btnCloseHelpPopup.setOnClickListener(v -> hideHelpPopup(null));
 
+        // 도움말 팝업 닫기 버튼 [임시 수정: 클릭 시 DB 생성]
+        //btnCloseHelpPopup.setOnClickListener(v -> {
+            // 1. 팝업은 정상적으로 닫습니다.
+            //hideHelpPopup(null);
+
+            // 2. 🔥 임시 DB 세팅: 0번 과목(Algorithms)에 1개의 빈 문제 생성
+            //createEmptyQuizTemplatesAutoID(0, 1);
+        //});
 
         return view;
     }
@@ -466,5 +474,41 @@ public class MainFragment extends Fragment {
         if (tvMessage != null) {
             tvMessage.setText(message);
         }
+    }
+
+    // [임시 추가] 파이어베이스 빈칸 템플릿 생성 함수
+    private void createEmptyQuizTemplatesAutoID(int subjectId, int totalCount) {
+        com.google.firebase.firestore.FirebaseFirestore db = com.google.firebase.firestore.FirebaseFirestore.getInstance();
+
+        db.collection("subjects")
+                .whereEqualTo("subject_id", subjectId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        com.google.firebase.firestore.DocumentSnapshot subjectDoc = querySnapshot.getDocuments().get(0);
+
+                        for (int i = 7; i <= totalCount; i++) {
+                            java.util.Map<String, Object> emptyQuiz = new java.util.HashMap<>();
+                            emptyQuiz.put("quiz_id", i);
+                            emptyQuiz.put("question", "");
+                            emptyQuiz.put("answer_choice", java.util.Arrays.asList("", "", "", ""));
+                            emptyQuiz.put("answer_correct", 0);
+                            emptyQuiz.put("difficulty_level", "normal");
+                            emptyQuiz.put("reward_gold", 10);
+                            emptyQuiz.put("explanation", "");
+                            emptyQuiz.put("question_score", 30); // 냅색용 추가 필드
+
+                            subjectDoc.getReference().collection("quizzes")
+                                    .add(emptyQuiz)
+                                    .addOnSuccessListener(docRef -> {
+                                        android.util.Log.d("Firebase", "빈칸 생성 완료 (랜덤 ID: " + docRef.getId() + ")");
+                                    });
+                        }
+                        // Fragment에서는 this 대신 requireContext()를 사용합니다!
+                        android.widget.Toast.makeText(requireContext(), totalCount + "개의 템플릿 생성 완료!", android.widget.Toast.LENGTH_SHORT).show();
+                    } else {
+                        android.widget.Toast.makeText(requireContext(), "DB에서 과목을 찾을 수 없습니다.", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }
