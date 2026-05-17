@@ -3,6 +3,7 @@ package com.example.term_project;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -56,20 +57,45 @@ public class LevelTestActivity extends AppCompatActivity {
         radioGroupOptions.setOnCheckedChangeListener((group, checkedId) -> updateOptionBackgrounds());
     }
 
-    private void loadRandomQuiz(int subjectId, int questionId){
-        repository.getQuizQuestionFromFirestore(0, questionId, new QuizRepository.OnQuestionFetchedListener() {
+    private void loadRandomQuiz(int subjectId, int questionId) {
+        // 기존 코드에 있던 숫자 1 또는 subjectId를 상황에 맞게 사용하시면 됩니다.
+        repository.getQuizQuestionFromFirestore(1, questionId, new QuizRepository.OnQuestionFetchedListener() {
             @Override
             public void onSuccess(QuizQuestion question) {
                 currentQuiz = question;
                 tvQuizQuestion.setText("Q." + question.getQuestion());
                 String[] options = question.getOptions();
-                LT_option1.setText(options[0]);
-                LT_option2.setText(options[1]);
-                LT_option3.setText(options[2]);
-                LT_option4.setText(options[3]);
+
+                // 1. 모든 보기를 먼저 화면에서 숨김 (초기화)
+                LT_option1.setVisibility(View.GONE);
+                LT_option2.setVisibility(View.GONE);
+                LT_option3.setVisibility(View.GONE);
+                LT_option4.setVisibility(View.GONE);
+
+                // 2. 존재하는 보기의 개수(length)만큼만 텍스트를 넣고 화면에 표시
+                if (options != null) {
+                    if (options.length > 0) {
+                        LT_option1.setText(options[0]);
+                        LT_option1.setVisibility(View.VISIBLE);
+                    }
+                    if (options.length > 1) {
+                        LT_option2.setText(options[1]);
+                        LT_option2.setVisibility(View.VISIBLE);
+                    }
+                    if (options.length > 2) {
+                        LT_option3.setText(options[2]);
+                        LT_option3.setVisibility(View.VISIBLE);
+                    }
+                    if (options.length > 3) {
+                        LT_option4.setText(options[3]);
+                        LT_option4.setVisibility(View.VISIBLE);
+                    }
+                }
+
                 radioGroupOptions.clearCheck();
                 updateOptionBackgrounds();
             }
+
             @Override
             public void onFailure(Exception e) {
                 Toast.makeText(LevelTestActivity.this, "문제를 불러오지 못했습니다", Toast.LENGTH_SHORT).show();
@@ -97,7 +123,7 @@ public class LevelTestActivity extends AppCompatActivity {
                 finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount); // 7개 다 맞추면 테스트 종료 (고수)
             } else {
                 testCurrentIndex++;
-                loadRandomQuiz(0, testCurrentIndex);
+                loadRandomQuiz(1, testCurrentIndex);
             }
         } else {
             finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount);
