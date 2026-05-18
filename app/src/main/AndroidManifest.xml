@@ -29,12 +29,16 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity android:name=".LevelTestActivity" />
+<!-- 친구 추가 부분 -->
+        <activity
+            android:name=".FriendActivity"
+            android:exported="false"/>
+<!-- 레벨테스트 부분 -->
+        <activity
+            android:name=".LevelTestActivity" />
     </application>
 
 </manifest>
