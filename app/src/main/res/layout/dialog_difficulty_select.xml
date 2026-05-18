@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="22dp"
+    android:gravity="center"
+    android:background="@drawable/bg_difficulty_dialog">
+
+    <TextView
+        android:id="@+id/tvDifficultyTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="난이도 선택"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#3A2A1A"
+        android:layout_marginBottom="6dp" />
+
+    <TextView
+        android:id="@+id/tvDifficultyDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="풀고 싶은 문제 난이도를 선택하세요"
+        android:textSize="14sp"
+        android:textColor="#7A6A58"
+        android:layout_marginBottom="20dp" />
+
+    <Button
+        android:id="@+id/btnEasy"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="하"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#3A2A1A"
+        android:background="@drawable/bg_difficulty_button"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btnNormal"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="중"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#3A2A1A"
+        android:background="@drawable/bg_difficulty_button"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btnHard"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="상"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#3A2A1A"
+        android:background="@drawable/bg_difficulty_button"
+        android:layout_marginBottom="18dp" />
+
+    <TextView
+        android:id="@+id/btnCancelDifficulty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="닫기"
+        android:textSize="15sp"
+        android:textColor="#8A6B4D"
+        android:padding="8dp" />
+
+</LinearLayout>

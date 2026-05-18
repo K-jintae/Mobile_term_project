@@ -59,7 +59,11 @@ public class LevelTestActivity extends AppCompatActivity {
 
     private void loadRandomQuiz(int subjectId, int questionId) {
         // 기존 코드에 있던 숫자 1 또는 subjectId를 상황에 맞게 사용하시면 됩니다.
-        repository.getQuizQuestionFromFirestore(1, questionId, new QuizRepository.OnQuestionFetchedListener() {
+        repository.getQuizQuestionFromFirestore(
+                1,
+                questionId,
+                "normal",
+                new QuizRepository.OnQuestionFetchedListener() {
             @Override
             public void onSuccess(QuizQuestion question) {
                 currentQuiz = question;
