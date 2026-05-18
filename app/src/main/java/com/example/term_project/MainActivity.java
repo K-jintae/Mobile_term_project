@@ -1,7 +1,8 @@
 package com.example.term_project;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.Intent;
+import android.widget.Button;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -38,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_LAST_LOGIN_TIME = "last_login_time";
     private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
     private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         // ViewPager 설정
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);
+
         checkLongAbsenceState();
 
         //배경음악 재생
@@ -75,17 +76,6 @@ public class MainActivity extends AppCompatActivity {
             String uid = mAuth.getCurrentUser().getUid();
             db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
-                    // 가장 먼저 레벨 테스트를 완료했는지 확인
-                    Boolean isTested = doc.getBoolean("isTested");
-
-                    // isTested 값이 없거나(null) false라면 레벨테스트 화면으로 강제 이동
-                    if (isTested == null || !isTested) {
-                        Intent intent = new Intent(MainActivity.this, LevelTestActivity.class);
-                        startActivity(intent);
-
-                        finish(); // MainActivity 종료
-                        return;   // 아래의 골드, 옷 불러오는 로직을 실행하지 않고 중단
-                    }
                     // 골드 로드
                     Long g = doc.getLong("gold");
                     this.gold = (g != null) ? g.intValue() : 0;
@@ -117,8 +107,10 @@ public class MainActivity extends AppCompatActivity {
 
                     // 골드 업데이트가 끝나면 화면을 다시 투명하게
                     updateTopBar();
-                    viewPager.setAdapter(new ViewPagerAdapter(this));
-                    viewPager.setCurrentItem(1, false);
+
+                    /*viewPager.setAdapter(new ViewPagerAdapter(this));
+                    viewPager.setCurrentItem(1, false);*/
+
                 } else {
                     // 유저 데이터가 없으면 새로 생성
                     java.util.Map<String, Object> newUser = new java.util.HashMap<>();
@@ -126,6 +118,7 @@ public class MainActivity extends AppCompatActivity {
                     newUser.put("hat", "none");
                     newUser.put("clothes", "none");
                     newUser.put("background", "none");
+                    newUser.put("friends", new java.util.ArrayList<String>());
                     db.collection("users").document(uid).set(newUser);
                 }
             });
@@ -143,22 +136,22 @@ public class MainActivity extends AppCompatActivity {
         // overlay fragment가 열려 있으면 그것부터 닫고,
         // 없으면 원래 앱 뒤로가기 동작 수행
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                    getSupportFragmentManager().popBackStack();
+                    @Override
+                    public void handleOnBackPressed() {
+                        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                            getSupportFragmentManager().popBackStack();
 
-                    // popBackStack 이후 컨테이너를 숨길지 확인
-                    getSupportFragmentManager().executePendingTransactions();
+                            // popBackStack 이후 컨테이너를 숨길지 확인
+                            getSupportFragmentManager().executePendingTransactions();
 
-                    if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
-                        fragmentContainer.setVisibility(View.GONE);
+                            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
+                                fragmentContainer.setVisibility(View.GONE);
+                            }
+                        } else {
+                            finish();
+                        }
                     }
-                } else {
-                    finish();
                 }
-            }
-        }
 
         );
     }
