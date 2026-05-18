@@ -19,7 +19,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"/>
 
-    <!-- 바깥 테두리 카드 -->
     <FrameLayout
         android:id="@+id/sceneCard"
         android:layout_width="0dp"
@@ -36,7 +35,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintDimensionRatio="1:1">
 
-        <!-- 안쪽 실제 내용 카드 -->
         <FrameLayout
             android:id="@+id/sceneCardInner"
             android:layout_width="match_parent"
@@ -46,7 +44,6 @@
             android:clipToOutline="true"
             android:outlineProvider="background">
 
-            <!-- 카드 안 배경 -->
             <ImageView
                 android:id="@+id/bgInterior"
                 android:layout_width="match_parent"
@@ -54,7 +51,6 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/background_hill" />
 
-            <!-- 캐릭터 레이어 묶음 -->
             <FrameLayout
                 android:id="@+id/characterContainer"
                 android:layout_width="220dp"
@@ -91,10 +87,6 @@
         </FrameLayout>
     </FrameLayout>
 
-    <!-- 캐릭터 하단 메시지창 -->
-
-    <!-- 설정 버튼 -->
-
     <FrameLayout
         android:id="@+id/msg_container"
         android:layout_width="352dp"
@@ -120,7 +112,6 @@
             android:textSize="20sp" />
     </FrameLayout>
 
-    <!--문제 이어풀기 버튼-->
     <FrameLayout
         android:id="@+id/quiz_container"
         android:layout_width="204dp"
@@ -150,6 +141,27 @@
     </FrameLayout>
 
     <ImageButton
+        android:id="@+id/btnOpenFriend"
+        android:layout_width="54dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="12dp"
+        android:src="@drawable/ic_add_friend"
+
+        android:background="@drawable/bg_circle_button"
+
+        android:backgroundTint="#F5EBE0"
+
+        android:scaleType="fitCenter"
+        android:padding="10dp"
+        app:tint="@null"
+
+        android:elevation="6dp"
+        android:contentDescription="친구 관리 버튼"
+        app:layout_constraintEnd_toStartOf="@id/btnSettings"
+        app:layout_constraintTop_toTopOf="@id/btnSettings"
+        app:layout_constraintBottom_toBottomOf="@id/btnSettings" />
+
+    <ImageButton
         android:id="@+id/btnSettings"
         android:layout_width="54dp"
         android:layout_height="48dp"
@@ -164,7 +176,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:elevation="6dp" />
 
-    <!-- 어두운 배경 오버레이 -->
     <View
         android:id="@+id/dimView"
         android:layout_width="0dp"
@@ -177,7 +188,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:elevation="6dp"/>
 
-    <!-- 도움말 팝업 -->
     <LinearLayout
         android:id="@+id/helpPopup"
         android:layout_width="300dp"
@@ -237,7 +247,6 @@
             android:elevation="6dp"/>
     </LinearLayout>
 
-    <!-- 소리 설정 팝업 -->
     <LinearLayout
         android:id="@+id/soundSettingsPopup"
         android:layout_width="280dp"
@@ -263,7 +272,6 @@
             android:textStyle="bold"
             android:elevation="6dp"/>
 
-        <!-- 음성 ON -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -288,7 +296,6 @@
                     android:contentDescription="음성 ON" />
             </FrameLayout>
 
-            <!-- 뮤트 ON -->
             <FrameLayout
                 android:id="@+id/btnSoundMute"
                 android:layout_width="100dp"
@@ -325,7 +332,6 @@
             android:elevation="6dp"/>
     </LinearLayout>
 
-    <!-- 팝업창 -->
     <LinearLayout
         android:id="@+id/settingsPopup"
         android:layout_width="280dp"
@@ -350,7 +356,6 @@
             android:textSize="24sp"
             android:textStyle="bold"
             android:elevation="6dp"/>
-
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnSound"
