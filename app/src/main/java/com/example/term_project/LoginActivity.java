@@ -1,6 +1,5 @@
 package com.example.term_project;
 
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -8,52 +7,39 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthCredential;
+
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
+
     LinearLayout signupLayout;
+
     EditText idInput, pwInput;
     EditText signupId, signupPw, signupName;
+
     TextView loginError;
-    Button loginBtn, goSignupBtn, signupBtn, backBtn;
-    SharedPreferences pref;
     TextView idError, pwError, nameError;
+
+    Button loginBtn, goSignupBtn, signupBtn, backBtn;
     Button checkIdBtn;
+
+    SharedPreferences pref;
+
     boolean isIdChecked = false;
     String checkedId = "";
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-    private GoogleSignInClient mGoogleSignInClient;
 
-    private QuizRepository repository;
-
-    private QuizQuestion currentQuiz;
-
-    private LinearLayout levelTestLayout;
-
-    private TextView tvQuizQuestion;
-    private static final int RC_SIGN_IN = 9001; // 로그인 요청 코드
-    // private TextView signupError;   activity_login.xml 파일에 id가 없다고 떠서 임시 비활성화 49줄과 연관7;
+    private static final int RC_SIGN_IN = 9001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,14 +48,32 @@ public class LoginActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-        // signupError = findViewById(R.id.signupError);
 
         pref = getSharedPreferences("user", MODE_PRIVATE);
 
-        // 자동 로그인 체크, firebase 기반으로 변경
+        // 자동 로그인 체크
         if (mAuth.getCurrentUser() != null) {
-            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-            finish();
+            String uid = mAuth.getCurrentUser().getUid();
+
+            db.collection("users").document(uid).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            Boolean isTested = documentSnapshot.getBoolean("isTest");
+
+                            if (isTested == null || !isTested) {
+                                startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
+                            } else {
+                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                            }
+
+                            finish();
+                        } else {
+                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                            finish();
+                        }
+                    });
+
+            return;
         }
 
         // 연결
@@ -83,12 +87,13 @@ public class LoginActivity extends AppCompatActivity {
         signupName = findViewById(R.id.signupName);
 
         loginError = findViewById(R.id.loginError);
+
         idError = findViewById(R.id.idError);
         pwError = findViewById(R.id.pwError);
         nameError = findViewById(R.id.nameError);
+
         checkIdBtn = findViewById(R.id.checkIdBtn);
 
-        //signupBtn을 부르는 함수만 추가
         signupBtn = findViewById(R.id.signupBtn);
         loginBtn = findViewById(R.id.loginBtn);
         goSignupBtn = findViewById(R.id.goSignupBtn);
@@ -107,45 +112,56 @@ public class LoginActivity extends AppCompatActivity {
         // 아이디 중복 확인
         checkIdBtn.setOnClickListener(v -> {
             String id = signupId.getText().toString().trim();
-            String savedId = pref.getString("id", "");
 
             idError.setVisibility(View.VISIBLE);
 
             if (id.isEmpty()) {
                 idError.setText("아이디를 입력해주세요.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 isIdChecked = false;
                 return;
             }
 
             if (id.length() < 4) {
                 idError.setText("아이디는 4글자 이상입니다.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 isIdChecked = false;
                 return;
             }
 
             if (!id.matches("^[a-zA-Z0-9]+$")) {
                 idError.setText("아이디는 영어와 숫자만 가능합니다.");
-                idError.setVisibility(View.VISIBLE);
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                isIdChecked = false;
                 return;
             }
 
-            // 기존 중복확인 부분 남겨둠
-            /*if (id.equals(savedId)) {
-                idError.setText("이미 사용 중인 아이디입니다.");
-                isIdChecked = false;
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
-            } else {
-                idError.setText("✔ 사용 가능한 아이디입니다.");
-                isIdChecked = true;
-                checkedId = id;
-                idError.setTextColor(getColor(android.R.color.holo_green_dark));
-            }*/
+            String email = id + "@termproject.com";
 
-            // Firebase 환경에서는 진짜 중복확인이 복잡하여 우선적으로 처리
-            idError.setText("✔ 사용 가능한 아이디입니다.");
-            isIdChecked = true;
-            checkedId = id;
-            idError.setTextColor(getColor(android.R.color.holo_green_dark));
+            mAuth.fetchSignInMethodsForEmail(email)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            boolean isUsed =
+                                    task.getResult() != null
+                                            && task.getResult().getSignInMethods() != null
+                                            && !task.getResult().getSignInMethods().isEmpty();
+
+                            if (isUsed) {
+                                idError.setText("이미 사용 중인 아이디입니다.");
+                                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                                isIdChecked = false;
+                            } else {
+                                idError.setText("✔ 사용 가능한 아이디입니다.");
+                                idError.setTextColor(getColor(android.R.color.holo_green_dark));
+                                isIdChecked = true;
+                                checkedId = id;
+                            }
+                        } else {
+                            idError.setText("중복 확인 실패");
+                            idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                            isIdChecked = false;
+                        }
+                    });
         });
 
         // 아이디 중복 확인 후 아이디 수정하면 다시 확인하도록
@@ -167,15 +183,10 @@ public class LoginActivity extends AppCompatActivity {
 
         // 회원가입
         signupBtn.setOnClickListener(v -> {
-
             String id = signupId.getText().toString().trim();
             String pw = signupPw.getText().toString().trim();
             String name = signupName.getText().toString().trim();
 
-            String savedId = pref.getString("id", "");
-
-
-            // 빈 값 검사
             idError.setVisibility(View.GONE);
             pwError.setVisibility(View.GONE);
             nameError.setVisibility(View.GONE);
@@ -183,30 +194,35 @@ public class LoginActivity extends AppCompatActivity {
             // 아이디 검사
             if (id.isEmpty()) {
                 idError.setText("아이디를 입력해주세요.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!id.matches("^[a-zA-Z0-9]+$")) {
                 idError.setText("아이디는 영어와 숫자만 가능합니다.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (id.length() < 4) {
                 idError.setText("아이디는 4글자 이상이어야 합니다.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!isIdChecked) {
                 idError.setText("아이디 중복 확인을 해주세요.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!id.equals(checkedId)) {
                 idError.setText("아이디를 다시 확인해주세요.");
+                idError.setTextColor(getColor(android.R.color.holo_red_dark));
                 idError.setVisibility(View.VISIBLE);
                 isIdChecked = false;
                 return;
@@ -220,7 +236,7 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             if (pw.length() < 8 || !pw.matches(".*[!@#$%^&*()].*")) {
-                pwError.setText("비밀번호는 8자 이상, 특수문자 포함를 포함해야 합니다.");
+                pwError.setText("비밀번호는 8자 이상, 특수문자를 포함해야 합니다.");
                 pwError.setVisibility(View.VISIBLE);
                 return;
             }
@@ -232,42 +248,57 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            // 1. 파이어베이스 인증용 가짜 이메일 생성
             String email = id + "@termproject.com";
 
-            // 2. 파이어베이스 계정 생성
             mAuth.createUserWithEmailAndPassword(email, pw)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
-                            // 3. 계정 생성 성공 시 Firestore에 초기 데이터(골드) 저장
                             String uid = mAuth.getCurrentUser().getUid();
+
                             Map<String, Object> newUser = new HashMap<>();
-                            newUser.put("gold", 100); // 초기 가입 축하금
-                            newUser.put("name", name); // 닉네임
+                            newUser.put("gold", 100);
+                            newUser.put("name", name);
+
+                            // 레벨테스트 아직 안 함
+                            newUser.put("isTest", false);
+
+                            // 기본 캐릭터/진행도 초기값
+                            newUser.put("hat", "none");
+                            newUser.put("clothes", "none");
+                            newUser.put("interior", "background_hill");
+
+                            newUser.put("unlocked_stage_1", true);
+                            newUser.put("unlocked_stage_2", false);
+                            newUser.put("unlocked_stage_3", false);
+                            newUser.put("unlocked_stage_4", false);
+                            newUser.put("unlocked_stage_5", false);
 
                             db.collection("users").document(uid).set(newUser)
                                     .addOnSuccessListener(aVoid -> {
-                                        // 앱 상단에 띄우기 위해 닉네임만 SharedPreferences에 임시 저장
                                         SharedPreferences.Editor editor = pref.edit();
                                         editor.putString("name", name);
                                         editor.apply();
 
                                         Toast.makeText(this, "회원가입 완료!", Toast.LENGTH_SHORT).show();
-                                        signupLayout.setVisibility(View.GONE);
-                                        isIdChecked = false;
-                                        checkedId = "";
-                                        signupId.setText("");
-                                        signupPw.setText("");
-                                        signupName.setText("");
+
+                                        // 회원가입 직후 레벨테스트로 이동
+                                        startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
+                                        finish();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Toast.makeText(this, "유저 정보 저장 실패", Toast.LENGTH_SHORT).show();
                                     });
                         } else {
-                            // 이미 가입된 아이디(이메일)이거나 네트워크 오류일 때
-                            Toast.makeText(this, "가입 실패: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                            Toast.makeText(
+                                    this,
+                                    "가입 실패: " + task.getException().getMessage(),
+                                    Toast.LENGTH_LONG
+                            ).show();
                         }
                     });
         });
 
-        // 🔥 파이어베이스 로그인 처리
+        // 로그인
         loginBtn.setOnClickListener(v -> {
             String inputId = idInput.getText().toString().trim();
             String inputPw = pwInput.getText().toString().trim();
@@ -280,37 +311,42 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            // 가짜 이메일로 변환 후 로그인 시도
             String email = inputId + "@termproject.com";
 
             mAuth.signInWithEmailAndPassword(email, inputPw)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
-
-                            //회원가입 후 로그인했을 때, 레벨테스트를 한 계정인지 아닌지를 확인
                             String uid = mAuth.getCurrentUser().getUid();
-                            db.collection("users").document(uid).get().addOnSuccessListener(documentSnapshot -> {
-                                if(documentSnapshot.exists()) {
-                                    Boolean isTested = documentSnapshot.getBoolean("isTest");
 
-                                    if(isTested == null || !isTested) {
-                                        Intent intent = new Intent(LoginActivity.this, LevelTestActivity.class);
-                                        startActivity(intent);
-                                        finish();
-                                    } else {
-                                        // 로그인 성공 시 메인 화면으로 이동
-                                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                                        finish();
-                                    }
-                                }
-                            });
+                            db.collection("users").document(uid).get()
+                                    .addOnSuccessListener(documentSnapshot -> {
+                                        if (documentSnapshot.exists()) {
+                                            String name = documentSnapshot.getString("name");
+                                            if (name != null && !name.isEmpty()) {
+                                                SharedPreferences.Editor editor = pref.edit();
+                                                editor.putString("name", name);
+                                                editor.apply();
+                                            }
+
+                                            Boolean isTested = documentSnapshot.getBoolean("isTest");
+
+                                            if (isTested == null || !isTested) {
+                                                startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
+                                            } else {
+                                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                            }
+
+                                            finish();
+                                        } else {
+                                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                            finish();
+                                        }
+                                    });
                         } else {
-
                             loginError.setText("아이디 또는 비밀번호가 틀렸습니다.");
                             loginError.setVisibility(View.VISIBLE);
                         }
                     });
         });
-
     }
 }
