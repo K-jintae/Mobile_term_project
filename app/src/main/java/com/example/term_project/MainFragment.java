@@ -14,6 +14,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
@@ -44,6 +45,9 @@ public class MainFragment extends Fragment {
     private FrameLayout btnSoundOn;
     private FrameLayout btnSoundMute;
     private boolean isSoundOn = true; // 소리 설정 상태
+    // 닉네임 수정 팝업 관련 변수
+    private LinearLayout nicknamePopup;
+    private EditText etNickname;
 
     // 도움말 팝업 관련 변수
     private LinearLayout helpPopup;
@@ -73,6 +77,7 @@ public class MainFragment extends Fragment {
         ImageButton btnSettings = view.findViewById(R.id.btnSettings);
         dimView = view.findViewById(R.id.dimView);
         settingsPopup = view.findViewById(R.id.settingsPopup);
+        Button btnEditNickname = view.findViewById(R.id.btnEditNickname);
 
         Button btnSound = view.findViewById(R.id.btnSound);
         Button btnHelp = view.findViewById(R.id.btnHelp);
@@ -88,6 +93,13 @@ public class MainFragment extends Fragment {
         // 도움말 팝업 관련 findViewById
         helpPopup = view.findViewById(R.id.helpPopup);
         Button btnCloseHelpPopup = view.findViewById(R.id.btnCloseHelpPopup);
+        nicknamePopup = view.findViewById(R.id.nicknamePopup);
+        etNickname = view.findViewById(R.id.etNickname);
+        ImageButton btnClearNickname = view.findViewById(R.id.btnClearNickname);
+        btnClearNickname.setOnClickListener(v -> etNickname.setText(""));
+
+        Button btnSaveNickname = view.findViewById(R.id.btnSaveNickname);
+        Button btnCloseNicknamePopup = view.findViewById(R.id.btnCloseNicknamePopup);
 
         btnOpenFriend = view.findViewById(R.id.btnOpenFriend);
         if(btnOpenFriend != null){
@@ -193,11 +205,63 @@ public class MainFragment extends Fragment {
             else if (helpPopup.getVisibility() == View.VISIBLE) {
                 hideHelpPopup(null);
             }
+            else if (nicknamePopup.getVisibility() == View.VISIBLE) {
+                hideNicknamePopup(null);
+            }
             // 설정 팝업이 열려있으면 닫기
             else if (settingsPopup.getVisibility() == View.VISIBLE) {
                 hideSettingsPopup(null);
             }
         });
+
+        // 닉네임 수정 버튼 클릭 (설정창 닫고 닉네임 창 열기)
+        btnEditNickname.setOnClickListener(v -> {
+            hideSettingsPopup(() -> {
+                // 기존 저장된 닉네임이 있다면 불러와서 EditText에 표시
+                SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
+                String currentNickname = pref.getString("nickname", "");
+                etNickname.setText(currentNickname);
+
+                showNicknamePopup();
+            });
+        });
+
+        // 닉네임 수정 버튼 클릭 (설정창 닫고 닉네임 창 열기)
+        btnEditNickname.setOnClickListener(v -> {
+            hideSettingsPopup(() -> {
+                // MainActivity와 동일하게 "name" 키를 사용하여 불러옵니다.
+                SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
+                String currentNickname = pref.getString("name", "");
+                etNickname.setText(currentNickname);
+
+                showNicknamePopup();
+            });
+        });
+
+        // 닉네임 저장 버튼 클릭 (SharedPreferences에 저장)
+        btnSaveNickname.setOnClickListener(v -> {
+            String newNickname = etNickname.getText().toString().trim();
+            if (!newNickname.isEmpty()) {
+                // MainActivity와 동일하게 "name" 키를 사용하여 저장합니다.
+                SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putString("name", newNickname);
+                editor.apply();
+
+                // MainActivity의 updatePlayerName 메서드를 호출하여 상단 UI 즉시 변경
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).updatePlayerName(newNickname);
+                }
+
+                Toast.makeText(getActivity(), "닉네임이 '" + newNickname + "'(으)로 변경되었습니다.", Toast.LENGTH_SHORT).show();
+                hideNicknamePopup(null);
+            } else {
+                Toast.makeText(getActivity(), "닉네임을 입력해주세요.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // 닉네임 팝업 닫기 버튼
+        btnCloseNicknamePopup.setOnClickListener(v -> hideNicknamePopup(null));
 
 
         // 소리 설정 버튼 클릭
@@ -433,6 +497,59 @@ public class MainFragment extends Fragment {
                 .start();
     }
 
+    // ===== 닉네임 팝업 메서드 =====
+    private void showNicknamePopup() {
+        dimView.setAlpha(0f);
+        dimView.setVisibility(View.VISIBLE);
+        dimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        nicknamePopup.setVisibility(View.VISIBLE);
+        nicknamePopup.setAlpha(0f);
+        nicknamePopup.setScaleX(0.88f);
+        nicknamePopup.setScaleY(0.88f);
+        nicknamePopup.setTranslationY(20f);
+
+        nicknamePopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void hideNicknamePopup(Runnable endAction) {
+        dimView.animate()
+                .alpha(0f)
+                .setDuration(160)
+                .withEndAction(() -> {
+                    dimView.setVisibility(View.GONE);
+                    dimView.setAlpha(1f);
+                })
+                .start();
+
+        nicknamePopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    nicknamePopup.setVisibility(View.GONE);
+                    nicknamePopup.setAlpha(1f);
+                    nicknamePopup.setScaleX(1f);
+                    nicknamePopup.setScaleY(1f);
+                    nicknamePopup.setTranslationY(0f);
+
+                    if (endAction != null) {
+                        endAction.run();
+                    }
+                })
+                .start();
+    }
 
     private void updateMessage(CharacterState state) {
 

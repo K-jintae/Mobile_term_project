@@ -154,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
         );
+
     }
 
 
@@ -358,5 +359,11 @@ public class MainActivity extends AppCompatActivity {
                 new ViewModelProvider(this).get(CharacterViewModel.class);
 
         viewModel.setFace(R.drawable.face_default);
+    }
+    // 상단 닉네임 표시 갱신
+    public void updatePlayerName(String newName) {
+        if (tvPlayerName != null) {
+            tvPlayerName.setText(newName);
+        }
     }
 }
