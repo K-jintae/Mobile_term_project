@@ -82,9 +82,6 @@ public class QuizPlayFragment extends Fragment {
         option3 = view.findViewById(R.id.option3);
         option4 = view.findViewById(R.id.option4);
         btnSubmit = view.findViewById(R.id.btnSubmit);
-        lottieEffect = view.findViewById(R.id.lottieEffect);
-        layoutResult = view.findViewById(R.id.layoutResult);
-        tvResultStatus = view.findViewById(R.id.tvResultStatus);
 
         quizFaceImage = view.findViewById(R.id.quizFaceImage);
         quizHatImage = view.findViewById(R.id.quizHatImage);
@@ -98,7 +95,11 @@ public class QuizPlayFragment extends Fragment {
         applyPressAnimation(btnSubmit);
 
         // 라디오 버튼 선택 시 배경색 업데이트
-        radioGroup.setOnCheckedChangeListener((group, checkedId) -> updateOptionBackgrounds());
+        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (!isAnswerSubmitted) {
+                updateOptionBackgrounds();
+            }
+        });
 
         // 전달받은 과목 번호와 난이도 읽기
         if (getArguments() != null) {
@@ -124,7 +125,14 @@ public class QuizPlayFragment extends Fragment {
         loadQuestionSet(currentSubjectId, currentDifficultyLevel);
 
         // 제출 버튼 클릭 시 정답 확인
-        btnSubmit.setOnClickListener(v -> checkAnswer());
+        // 제출/다음 버튼 클릭 처리
+        btnSubmit.setOnClickListener(v -> {
+            if (!isAnswerSubmitted) {
+                checkAnswer(); // 제출 상태
+            } else {
+                moveToNextQuestion(); // 다음 문제로 이동
+            }
+        });
 
         requireActivity().getOnBackPressedDispatcher().addCallback(
                 getViewLifecycleOwner(),
@@ -241,9 +249,21 @@ public class QuizPlayFragment extends Fragment {
         bindQuestion(currentQuestion);
 
         radioGroup.clearCheck();
-        updateOptionBackgrounds();
-
+        resetOptionBackgrounds(); // 모든 배경 초기화
+        isAnswerSubmitted = false;
+        btnSubmit.setText("제출");
         btnSubmit.setEnabled(true);
+        enableAllOptions(true);
+
+        // 얼굴 기본 상태로 복원
+        if (quizFaceImage != null) {
+            Integer currentFaceId = characterViewModel.getFace().getValue();
+            if (currentFaceId != null && currentFaceId != 0) {
+                quizFaceImage.setImageResource(currentFaceId);
+            } else {
+                quizFaceImage.setImageResource(R.drawable.face_default);
+            }
+        }
     }
 
     /**
@@ -324,14 +344,38 @@ public class QuizPlayFragment extends Fragment {
         }
 
         boolean isCorrect = selectedIndex == currentQuestion.getCorrectAnswerIndex();
+        // 정답/오답 처리
+        isAnswerSubmitted = true;
+        btnSubmit.setText("다음");
+        enableAllOptions(false);
+
+        showAnswerFeedback(selectedIndex, isCorrect);
         handleResult(isCorrect);
+    }
+
+    /**
+     * 정답/오답을 테두리 색상으로 표시
+     */
+    private void showAnswerFeedback(int selectedIndex, boolean isCorrect) {
+        RadioButton[] options = {option1, option2, option3, option4};
+        int correctIndex = currentQuestion.getCorrectAnswerIndex();
+
+        // 정답 표시 (초록색)
+        if (correctIndex >= 0 && correctIndex < options.length) {
+            options[correctIndex].setBackgroundResource(R.drawable.bg_option_correct);
+        }
+
+        // 오답 표시 (빨간색) - 선택한 답이 정답이 아닐 경우에만
+        if (!isCorrect && selectedIndex >= 0 && selectedIndex < options.length) {
+            options[selectedIndex].setBackgroundResource(R.drawable.bg_option_wrong);
+        }
     }
 
     /**
      * 정답/오답 결과를 처리한다.
      */
     private void handleResult(boolean isCorrect) {
-        btnSubmit.setEnabled(false);
+        //btnSubmit.setEnabled(false);
         totalSolvedCount++;
 
         if (isCorrect) {
@@ -344,19 +388,20 @@ public class QuizPlayFragment extends Fragment {
             int goldToAdd = calculateGold(currentQuestion);
             earnedGold += goldToAdd;
 
-            playEffect(R.raw.success, "정답입니다!\n+" + goldToAdd + "G");
+            // playEffect(R.raw.success, "정답입니다!\n+" + goldToAdd + "G");
         } else {
             if (quizFaceImage != null) {
                 quizFaceImage.setImageResource(R.drawable.face_sad);
             }
 
-            playEffect(R.raw.fail, "오답입니다!");
+            // playEffect(R.raw.fail, "오답입니다!");
         }
     }
 
     /**
+    /**
      * 이펙트를 재생한 뒤 다음 문제로 이동한다.
-     */
+
     private void playEffect(int rawResId, String statusText) {
         layoutResult.setVisibility(View.VISIBLE);
         tvResultStatus.setText(statusText);
@@ -390,6 +435,35 @@ public class QuizPlayFragment extends Fragment {
             public void onAnimationRepeat(android.animation.Animator animation) {
             }
         });
+    }
+     */
+
+    /**
+     * 다음 문제로 이동
+     */
+    private void moveToNextQuestion() {
+        currentQuestionIndex++;
+        showQuestionByIndex();
+    }
+
+    /**
+     * 모든 옵션 배경 초기화
+     */
+    private void resetOptionBackgrounds() {
+        option1.setBackgroundResource(R.drawable.bg_option_default);
+        option2.setBackgroundResource(R.drawable.bg_option_default);
+        option3.setBackgroundResource(R.drawable.bg_option_default);
+        option4.setBackgroundResource(R.drawable.bg_option_default);
+    }
+
+    /**
+     * 모든 옵션 활성화/비활성화
+     */
+    private void enableAllOptions(boolean enabled) {
+        option1.setEnabled(enabled);
+        option2.setEnabled(enabled);
+        option3.setEnabled(enabled);
+        option4.setEnabled(enabled);
     }
 
     /**
@@ -436,6 +510,27 @@ public class QuizPlayFragment extends Fragment {
     }
 
     /**
+     * 사용자가 선택한 보기에 따라 라디오 버튼의 배경을 업데이트한다.
+     */
+    private void updateOptionBackgrounds() {
+        option1.setBackgroundResource(option1.isChecked()
+                ? R.drawable.bg_quiz_option_selected
+                : R.drawable.bg_option_default);
+
+        option2.setBackgroundResource(option2.isChecked()
+                ? R.drawable.bg_quiz_option_selected
+                : R.drawable.bg_option_default);
+
+        option3.setBackgroundResource(option3.isChecked()
+                ? R.drawable.bg_quiz_option_selected
+                : R.drawable.bg_option_default);
+
+        option4.setBackgroundResource(option4.isChecked()
+                ? R.drawable.bg_quiz_option_selected
+                : R.drawable.bg_option_default);
+    }
+
+    /**
      * 현재 난이도 클리어 여부.
      * 기준: 획득 점수가 목표 점수의 80% 이상.
      */
@@ -457,7 +552,8 @@ public class QuizPlayFragment extends Fragment {
         return "hard".equals(normalizeDifficultyLevel(currentDifficultyLevel))
                 && isCurrentDifficultyClear();
     }
-
+    // 추가: 정답 제출 후 상태 관리
+    private boolean isAnswerSubmitted = false;
     /**
      * 난이도 클리어 및 다음 단계 해금 처리.
      */
@@ -616,27 +712,6 @@ public class QuizPlayFragment extends Fragment {
                     ViewGroup.LayoutParams.WRAP_CONTENT
             );
         }
-    }
-
-    /**
-     * 사용자가 선택한 보기에 따라 라디오 버튼의 배경을 업데이트한다.
-     */
-    private void updateOptionBackgrounds() {
-        option1.setBackgroundResource(option1.isChecked()
-                ? R.drawable.bg_quiz_option_selected
-                : R.drawable.bg_message_box);
-
-        option2.setBackgroundResource(option2.isChecked()
-                ? R.drawable.bg_quiz_option_selected
-                : R.drawable.bg_message_box);
-
-        option3.setBackgroundResource(option3.isChecked()
-                ? R.drawable.bg_quiz_option_selected
-                : R.drawable.bg_message_box);
-
-        option4.setBackgroundResource(option4.isChecked()
-                ? R.drawable.bg_quiz_option_selected
-                : R.drawable.bg_message_box);
     }
 
     /**

@@ -111,7 +111,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_message_box"
+                    android:background="@drawable/bg_option_default"
                     app:buttonTint="@color/quiz_radio_color"
                     android:paddingStart="16dp"
                     android:paddingTop="18dp"
@@ -127,7 +127,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_message_box"
+                    android:background="@drawable/bg_option_default"
                     app:buttonTint="@color/quiz_radio_color"
                     android:paddingStart="16dp"
                     android:paddingTop="18dp"
@@ -143,7 +143,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_message_box"
+                    android:background="@drawable/bg_option_default"
                     app:buttonTint="@color/quiz_radio_color"
                     android:paddingStart="16dp"
                     android:paddingTop="18dp"
@@ -159,7 +159,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:background="@drawable/bg_message_box"
+                    android:background="@drawable/bg_option_default"
                     app:buttonTint="@color/quiz_radio_color"
                     android:paddingStart="16dp"
                     android:paddingTop="18dp"
@@ -184,7 +184,7 @@
                 android:minHeight="0dp"
                 android:paddingTop="16dp"
                 android:paddingBottom="16dp"
-                android:text="다음"
+                android:text="제출"
                 android:textAllCaps="false"
                 android:textColor="#2B2B2B"
                 android:textSize="18sp"
@@ -193,7 +193,7 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- 정답 / 오답 이펙트 -->
+    <!--
     <FrameLayout
         android:id="@+id/layoutResult"
         android:layout_width="match_parent"
@@ -238,5 +238,5 @@
                 android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
-
+    -->
 </FrameLayout>
