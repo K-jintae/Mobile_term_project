@@ -81,6 +81,16 @@ public class MainActivity extends AppCompatActivity {
                     this.gold = (g != null) ? g.intValue() : 0;
                     updateTopBar();
 
+                    //유저 닉네임 불러오기
+                    String loadedName = doc.getString("name");
+                    if (loadedName != null && !loadedName.isEmpty()) {
+                        updatePlayerName(loadedName); // 상단 UI 갱신
+
+                        // 기기 내부(SharedPreferences)에도 백업으로 동기화 저장
+                        getSharedPreferences("user", MODE_PRIVATE).edit()
+                                .putString("name", loadedName).apply();
+                    }
+
                     // 의상 정보 로드
                     CharacterViewModel viewModel = new androidx.lifecycle.ViewModelProvider(this).get(CharacterViewModel.class);
 
@@ -116,10 +126,13 @@ public class MainActivity extends AppCompatActivity {
                     java.util.Map<String, Object> newUser = new java.util.HashMap<>();
                     newUser.put("gold", 100);
                     newUser.put("hat", "none");
+                    newUser.put("name", "기본닉네임");
                     newUser.put("clothes", "none");
                     newUser.put("background", "none");
                     newUser.put("friends", new java.util.ArrayList<String>());
                     db.collection("users").document(uid).set(newUser);
+
+                    updatePlayerName("기본닉네임");
                 }
             });
         }

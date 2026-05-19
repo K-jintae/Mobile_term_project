@@ -253,6 +253,23 @@ public class MainFragment extends Fragment {
                     ((MainActivity) getActivity()).updatePlayerName(newNickname);
                 }
 
+                // 파이어베이스 FireStore 서버에 실시간 원격 저장
+                com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+                if (auth.getCurrentUser() != null) {
+                    String uid = auth.getCurrentUser().getUid();
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("users").document(uid)
+                            .update("name", newNickname) // users -> UID 문서의 name 필드를 새 닉네임으로 변경
+                            .addOnSuccessListener(aVoid -> {
+                                // 서버 저장 성공 시 디버그 로그 기록
+                                android.util.Log.d("Firebase", "닉네임 서버 저장 완료: " + newNickname);
+                            })
+                            .addOnFailureListener(e -> {
+                                // 실패 시 기록
+                                android.util.Log.e("Firebase", "닉네임 서버 저장 실패", e);
+                            });
+                }
+
                 Toast.makeText(getActivity(), "닉네임이 '" + newNickname + "'(으)로 변경되었습니다.", Toast.LENGTH_SHORT).show();
                 hideNicknamePopup(null);
             } else {
