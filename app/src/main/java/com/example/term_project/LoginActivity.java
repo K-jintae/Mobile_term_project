@@ -58,7 +58,7 @@ public class LoginActivity extends AppCompatActivity {
             db.collection("users").document(uid).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
-                            Boolean isTested = documentSnapshot.getBoolean("isTest");
+                            Boolean isTested = documentSnapshot.getBoolean("isTested");
 
                             if (isTested == null || !isTested) {
                                 startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
@@ -260,7 +260,7 @@ public class LoginActivity extends AppCompatActivity {
                             newUser.put("name", name);
 
                             // 레벨테스트 아직 안 함
-                            newUser.put("isTest", false);
+                            newUser.put("isTested", false);
 
                             // 기본 캐릭터/진행도 초기값
                             newUser.put("hat", "none");
@@ -328,7 +328,7 @@ public class LoginActivity extends AppCompatActivity {
                                                 editor.apply();
                                             }
 
-                                            Boolean isTested = documentSnapshot.getBoolean("isTest");
+                                            Boolean isTested = documentSnapshot.getBoolean("isTested");
 
                                             if (isTested == null || !isTested) {
                                                 startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
