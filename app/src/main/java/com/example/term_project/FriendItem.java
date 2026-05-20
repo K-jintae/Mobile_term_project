@@ -20,5 +20,9 @@ public class FriendItem {
     public String getReason(){
         return reason;
     }
+
+    public void setReason(String reason){
+        this.reason = reason;
+    }
 }
 
