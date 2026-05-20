@@ -16,6 +16,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import androidx.lifecycle.ViewModelProvider;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -74,22 +76,31 @@ public class MainActivity extends AppCompatActivity {
         // 로그인 유저 설정 불러오기
         if (mAuth.getCurrentUser() != null) {
             String uid = mAuth.getCurrentUser().getUid();
+
+            DatabaseReference myStatusRef = FirebaseDatabase.getInstance().getReference("/status/" + uid);
+            DatabaseReference connectedRef = FirebaseDatabase.getInstance().getReference(".info/connected");
+
+            connectedRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+                @Override
+                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot){
+                    boolean connected = snapshot.getValue(Boolean.class) != null && snapshot.getValue(Boolean.class);
+                    if(connected){
+                        myStatusRef.onDisconnect().setValue("offline");
+
+                        myStatusRef.setValue("online");
+                    }
+                }
+
+                @Override
+                public void onCancelled(com.google.firebase.database.DatabaseError error){}
+            });
+
             db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
                     // 골드 로드
                     Long g = doc.getLong("gold");
                     this.gold = (g != null) ? g.intValue() : 0;
                     updateTopBar();
-
-                    //유저 닉네임 불러오기
-                    String loadedName = doc.getString("name");
-                    if (loadedName != null && !loadedName.isEmpty()) {
-                        updatePlayerName(loadedName); // 상단 UI 갱신
-
-                        // 기기 내부(SharedPreferences)에도 백업으로 동기화 저장
-                        getSharedPreferences("user", MODE_PRIVATE).edit()
-                                .putString("name", loadedName).apply();
-                    }
 
                     // 의상 정보 로드
                     CharacterViewModel viewModel = new androidx.lifecycle.ViewModelProvider(this).get(CharacterViewModel.class);
@@ -126,13 +137,10 @@ public class MainActivity extends AppCompatActivity {
                     java.util.Map<String, Object> newUser = new java.util.HashMap<>();
                     newUser.put("gold", 100);
                     newUser.put("hat", "none");
-                    newUser.put("name", "기본닉네임");
                     newUser.put("clothes", "none");
                     newUser.put("background", "none");
                     newUser.put("friends", new java.util.ArrayList<String>());
                     db.collection("users").document(uid).set(newUser);
-
-                    updatePlayerName("기본닉네임");
                 }
             });
         }
@@ -167,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
                 }
 
         );
-
     }
 
 
@@ -372,11 +379,5 @@ public class MainActivity extends AppCompatActivity {
                 new ViewModelProvider(this).get(CharacterViewModel.class);
 
         viewModel.setFace(R.drawable.face_default);
-    }
-    // 상단 닉네임 표시 갱신
-    public void updatePlayerName(String newName) {
-        if (tvPlayerName != null) {
-            tvPlayerName.setText(newName);
-        }
     }
 }
