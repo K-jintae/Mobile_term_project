@@ -249,8 +249,12 @@ public class MainFragment extends Fragment {
                 editor.apply();
 
                 // MainActivity의 updatePlayerName 메서드를 호출하여 상단 UI 즉시 변경
-                if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).updatePlayerName(newNickname);
+                if(getActivity() instanceof MainActivity){
+                    MainActivity mainActivity = (MainActivity) getActivity();
+                    TextView tvMainPlayerName = mainActivity.findViewById(R.id.tvPlayerName);
+                    if(tvMainPlayerName != null){
+                        tvMainPlayerName.setText(newNickname);
+                    }
                 }
 
                 // 파이어베이스 FireStore 서버에 실시간 원격 저장
