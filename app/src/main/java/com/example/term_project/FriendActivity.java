@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
@@ -33,6 +34,9 @@ public class FriendActivity extends AppCompatActivity {
     private String myLevel = "중";
 
     private boolean isMyFriendMode = true;
+
+    private List<com.google.firebase.database.ValueEventListener> presenceListeners = new ArrayList<>();
+    private List<DatabaseReference> presenceRefs = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +90,8 @@ public class FriendActivity extends AppCompatActivity {
         String myUid = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : null;
         if (myUid == null) return;
 
+        removePresenceListeners();
+
         friendList.clear();
         myFriendsList.clear();
 
@@ -110,41 +116,86 @@ public class FriendActivity extends AppCompatActivity {
                                                 String flv = doc.getString("level");
                                                 String levelStr = (flv != null) ? flv : "하";
 
-                                                FriendItem item = new FriendItem(userId, levelStr, "내 친구");
+                                                FriendItem item = new FriendItem(userId, levelStr, "내 친구 ○ 오프라인");
                                                 friendList.add(item);
+                                                int position = friendList.size() - 1;
+
                                                 adapter.notifyDataSetChanged();
+
+                                                DatabaseReference friendStatusRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                                                        .getReference("/status/" + friendUid);
+
+                                                com.google.firebase.database.ValueEventListener listener = new com.google.firebase.database.ValueEventListener() {
+                                                    @Override
+                                                    public void onDataChange(com.google.firebase.database.DataSnapshot snapshot){
+                                                        if(snapshot.exists()){
+                                                            String status = snapshot.getValue(String.class);
+                                                            if("online".equals(status)){
+                                                                item.setReason("내 친구 ● 접속중");
+                                                            } else{
+                                                                item.setReason("내 친구 ○ 오프라인");
+                                                            }
+                                                            adapter.notifyItemChanged(position);
+                                                        }
+                                                    }
+                                                    @Override
+                                                    public void onCancelled(com.google.firebase.database.DatabaseError error){}
+                                                };
+
+                                                friendStatusRef.addValueEventListener(listener);
+                                                presenceRefs.add(friendStatusRef);
+                                                presenceListeners.add(listener);
                                             }
                                         });
                             }
                         } else {
-                            Toast.makeText(this, "등록된 친구가 없습니다. 추천을 받아보세요!", Toast.LENGTH_SHORT).show();
-                            adapter.notifyDataSetChanged();
-                        }
+                            Toast.makeText(this, "등록된 친구가 없습니다. 추천을 받아보세요!", Toast.LENGTH_SHORT).show();                        }
                     }
                 });
     }
 
+    private void removePresenceListeners(){
+        for(int i = 0; i < presenceRefs.size(); i++){
+            if (presenceRefs.get(i) != null && presenceListeners.get(i) !=null) {
+                presenceRefs.get(i).removeEventListener(presenceListeners.get(i));
+            }
+        }
+        presenceRefs.clear();
+        presenceListeners.clear();
+    }
+
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        removePresenceListeners();
+    }
     private void loadFriendRecommendations() {
         friendList.clear();
         excludedUids.clear();
+        myFriendsList.clear();
+        adapter.notifyDataSetChanged();
 
         String myUid = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : null;
         if (myUid != null) {
             excludedUids.add(myUid);
+        } else{
+            return;
         }
 
-        if (myUid != null) {
+
             db.collection("users").document(myUid).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
+                            String lv = documentSnapshot.getString("level");
+                            myLevel = (lv != null) ? lv : "하";
                             List<String> friends = (List<String>) documentSnapshot.get("friends");
 
                             if (friends != null && !friends.isEmpty()) {
                                 myFriendsList = friends;
                                 excludedUids.addAll(friends);
+
                                 fetchFriendsOfFriends();
                             } else {
-                                myFriendsList.clear();
                                 fetchRandomRecommendations();
                             }
                         } else {
@@ -152,7 +203,7 @@ public class FriendActivity extends AppCompatActivity {
                         }
                     })
                     .addOnFailureListener(e -> fetchRandomRecommendations());
-        }
+
     }
 
     private void fetchFriendsOfFriends() {
