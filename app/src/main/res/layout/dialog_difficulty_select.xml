@@ -26,38 +26,47 @@
         android:textColor="#7A6A58"
         android:layout_marginBottom="20dp" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnEasy"
         android:layout_width="wrap_content"
         android:layout_height="52dp"
+        android:layout_marginTop="4dp"
         android:text="하"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#3A2A1A"
         android:background="@drawable/bg_difficulty_button"
+        android:backgroundTint="@null"
+        android:stateListAnimator="@null"
+        android:includeFontPadding="false"
         android:layout_marginBottom="12dp" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnNormal"
         android:layout_width="wrap_content"
         android:layout_height="52dp"
         android:layout_marginBottom="12dp"
         android:background="@drawable/bg_difficulty_button"
+        android:backgroundTint="@null"
+        android:stateListAnimator="@null"
         android:text="중"
         android:textColor="#3A2A1A"
         android:textSize="18sp"
         android:textStyle="bold" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnHard"
         android:layout_width="wrap_content"
-        android:layout_height="52dp"
+        android:layout_height="58dp"
         android:text="상"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#3A2A1A"
         android:background="@drawable/bg_difficulty_button"
-        android:layout_marginBottom="18dp" />
+        android:backgroundTint="@null"
+        android:stateListAnimator="@null"
+        android:includeFontPadding="false"
+        android:layout_marginBottom="26dp"/>
 
     <TextView
         android:id="@+id/btnCancelDifficulty"
