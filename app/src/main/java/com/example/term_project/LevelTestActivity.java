@@ -111,6 +111,7 @@ public class LevelTestActivity extends AppCompatActivity {
         if(currentQuiz == null){
             return;
         }
+
         int checkedId = radioGroupOptions.getCheckedRadioButtonId();
         if(checkedId == -1){
             Toast.makeText(this, "정답을 골라주세요!", Toast.LENGTH_SHORT).show();
@@ -119,23 +120,24 @@ public class LevelTestActivity extends AppCompatActivity {
 
         int selectedIndex = (checkedId == R.id.LT_option1) ? 0 : (checkedId == R.id.LT_option2) ? 1 : (checkedId == R.id.LT_option3) ? 2 : 3;
 
+        // 1. 정답을 맞춘 경우에만 정답 카운트(testCorrectCount) 증가
         if(selectedIndex == currentQuiz.getCorrectAnswerIndex()){
             testCorrectCount++;
+        }
 
-            // 현재 푼 문제가 총 문제 수(7)에 도달했는지 검사
-            if (testCurrentIndex >= TEST_TOTAL_COUNT) {
-                finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount); // 7개 다 맞추면 테스트 종료 (고수)
-            } else {
-                testCurrentIndex++;
-                loadRandomQuiz(1, testCurrentIndex);
-            }
-        } else {
+        // 2. 정답/오답 상관없이, 현재 푼 문제가 총 문제 수(7)에 도달했는지 검사
+        if (testCurrentIndex >= TEST_TOTAL_COUNT) {
+            // 7문제를 다 풀었으면 테스트 종료
             finishLevelTest(TEST_TOTAL_COUNT, testCorrectCount);
+        } else {
+            // 아직 남은 문제가 있다면 인덱스를 늘리고 다음 문제 불러오기
+            testCurrentIndex++;
+            loadRandomQuiz(1, testCurrentIndex);
         }
     }
 
     private void finishLevelTest(int totalSolved, int correct){
-        String userlevel = (correct >= 5) ? "고수" : (correct >= 3) ? "중수" : "하수";;
+        String userlevel = (correct >= 6) ? "고수" : (correct >= 5) ? "중수" : "하수";
         String alertMessage = (correct >= 5) ? "축하해요!! 당신은 고수의 실력을 가졌군요!" : (correct >= 3) ? "오호라...중수 레벨이라니..." : "테스트 완료!! 같이 차차 공부해봐요!!";
 
         int setKnapsackCapacityScore;
