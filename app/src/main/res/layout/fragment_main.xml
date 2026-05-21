@@ -149,8 +149,6 @@
 
         android:background="@drawable/bg_circle_button"
 
-        android:backgroundTint="#F5EBE0"
-
         android:scaleType="fitCenter"
         android:padding="10dp"
         app:tint="@null"
