@@ -37,7 +37,6 @@ public class LevelTestActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
-    // Repository 사용
     private QuizRepository repository;
 
     private QuizQuestion currentQuiz;
@@ -83,13 +82,21 @@ public class LevelTestActivity extends AppCompatActivity {
     }
 
     /*
-     * 레벨 테스트용:
-     * Easy / Normal / Hard 전체 문제를 모두 가져온 뒤
-     * Knapsack 알고리즘으로 조합 선택
+     * 레벨 테스트용 문제 불러오기
+     *
+     * Easy / Normal / Hard 문제를 모두 가져온 뒤
+     * quizId 기준으로 중복 제거 후
+     * Knapsack 알고리즘 적용
      */
     private void fetchQuestionsAndStartTest(int subjectId) {
 
-        List<QuizQuestion> mergedQuestions = new ArrayList<>();
+        /*
+         * key   = quizId
+         * value = QuizQuestion
+         * 같은 quizId가 들어오면 자동으로 덮어쓰기되므로
+         * 중복 문제 제거 가능
+         */
+        Map<Integer, QuizQuestion> uniqueQuestions = new HashMap<>();
 
         repository.getQuizQuestionsFromFirestore(
                 subjectId,
@@ -100,7 +107,9 @@ public class LevelTestActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess(List<QuizQuestion> easyQuestions) {
 
-                        mergedQuestions.addAll(easyQuestions);
+                        for (QuizQuestion q : easyQuestions) {
+                            uniqueQuestions.put(q.getQuizId(), q);
+                        }
 
                         repository.getQuizQuestionsFromFirestore(
                                 subjectId,
@@ -111,7 +120,9 @@ public class LevelTestActivity extends AppCompatActivity {
                                     @Override
                                     public void onSuccess(List<QuizQuestion> normalQuestions) {
 
-                                        mergedQuestions.addAll(normalQuestions);
+                                        for (QuizQuestion q : normalQuestions) {
+                                            uniqueQuestions.put(q.getQuizId(), q);
+                                        }
 
                                         repository.getQuizQuestionsFromFirestore(
                                                 subjectId,
@@ -122,11 +133,22 @@ public class LevelTestActivity extends AppCompatActivity {
                                                     @Override
                                                     public void onSuccess(List<QuizQuestion> hardQuestions) {
 
-                                                        mergedQuestions.addAll(hardQuestions);
+                                                        for (QuizQuestion q : hardQuestions) {
+                                                            uniqueQuestions.put(q.getQuizId(), q);
+                                                        }
+
+                                                        /*
+                                                         * Map → List 변환
+                                                         */
+                                                        List<QuizQuestion> mergedQuestions =
+                                                                new ArrayList<>(
+                                                                        uniqueQuestions.values()
+                                                                );
 
                                                         Log.d(
                                                                 "LevelTest",
-                                                                "전체 문제 수 = " + mergedQuestions.size()
+                                                                "중복 제거 후 문제 수 = "
+                                                                        + mergedQuestions.size()
                                                         );
 
                                                         for (QuizQuestion q : mergedQuestions) {
@@ -140,6 +162,12 @@ public class LevelTestActivity extends AppCompatActivity {
                                                             );
                                                         }
 
+                                                        /*
+                                                         * 현재 목표(DB에 문제 추가 후에 수정 해야함)‼️‼️‼️:
+                                                         * Easy 5개 (50점)
+                                                         * Hard 2개 (60점)
+                                                         * 총 110점
+                                                         */
                                                         testQuestions =
                                                                 KnapsackQuizSelector.selectQuestions(
                                                                         mergedQuestions,
@@ -152,7 +180,7 @@ public class LevelTestActivity extends AppCompatActivity {
 
                                                         Log.d(
                                                                 "LevelTest",
-                                                                "선택된 문제 수 = "
+                                                                "최종 선택 문제 수 = "
                                                                         + testQuestions.size()
                                                         );
 
@@ -329,11 +357,11 @@ public class LevelTestActivity extends AppCompatActivity {
 
         String userLevel;
 
-        if (correct >= 6) {
+        if (correct >= 5) {
 
             userLevel = "고수";
 
-        } else if (correct >= 5) {
+        } else if (correct >= 3) {
 
             userLevel = "중수";
 
