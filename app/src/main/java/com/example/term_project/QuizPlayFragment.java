@@ -613,62 +613,79 @@ public class QuizPlayFragment extends Fragment {
     /**
      * 퀴즈 결과 다이얼로그를 출력한다.
      */
+    //퀴즈 결과 출력 함수 수정 및 추가
     private void showFinalResult() {
         if (getContext() == null) {
             return;
         }
 
-        // 획득 골드 반영
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).addGold(earnedGold);
             ((MainActivity) getActivity()).clearLongAbsenceStateAfterQuiz();
         }
 
+        Dialog dialog = new Dialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_quiz_result, null);
+        dialog.setContentView(dialogView);
+        dialog.setCancelable(false);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        TextView tvResultMessage = dialogView.findViewById(R.id.tvResultMessage);
+
+        TextView tvStatEarnedGold = dialogView.findViewById(R.id.tvStatEarnedGold);
+        TextView tvStatAccuracy = dialogView.findViewById(R.id.tvStatAccuracy);
+        TextView tvStatSubject = dialogView.findViewById(R.id.tvStatSubject);
+        TextView tvStatDifficulty = dialogView.findViewById(R.id.tvStatDifficulty);
+        TextView tvStatCorrectCount = dialogView.findViewById(R.id.tvStatCorrectCount);
+        TextView tvStatWrongCount = dialogView.findViewById(R.id.tvStatWrongCount);
+        TextView tvStatTargetScore = dialogView.findViewById(R.id.tvStatTargetScore);
+        TextView tvStatClearScore = dialogView.findViewById(R.id.tvStatClearScore);
+
+        android.widget.Button btnConfirm = dialogView.findViewById(R.id.btnConfirm);
+
         int targetScore = getTargetScore();
         int clearScore = (int) Math.ceil(targetScore * 0.8);
-
-        double correctRate = (totalSolvedCount > 0)
-                ? ((double) correctCount / totalSolvedCount) * 100.0
-                : 0.0;
+        double correctRate = (totalSolvedCount > 0) ? ((double) correctCount / totalSolvedCount) * 100.0 : 0.0;
+        int wrongCount = totalSolvedCount - correctCount;
 
         boolean difficultyClear = isCurrentDifficultyClear();
         boolean nextStageUnlocked = canUnlockNextStage();
 
-        String resultMessage;
-
         if (nextStageUnlocked) {
-            resultMessage =
-                    "상 난이도 목표 점수의 80% 이상을 달성했습니다.\n" +
-                            "다음 단계가 해금되었습니다.\n\n";
+            tvResultMessage.setText("상 난이도 목표 점수의 80% 이상을 달성했습니다.\n다음 단계가 해금되었습니다.");
         } else if (difficultyClear) {
-            resultMessage =
-                    getDifficultyKoreanName(currentDifficultyLevel) +
-                            " 난이도를 클리어했습니다.\n" +
-                            "다음 단계 해금은 상 난이도 80% 이상 달성 시 가능합니다.\n\n";
+            tvResultMessage.setText(getDifficultyKoreanName(currentDifficultyLevel) + " 난이도를 클리어했습니다.\n다음 단계 해금은 상 난이도 80% 이상 달성 시 가능합니다.");
         } else {
-            resultMessage =
-                    "클리어 실패\n" +
-                            "목표 점수의 80% 이상을 달성해야 합니다.\n\n";
+            tvResultMessage.setText("클리어 실패\n목표 점수의 80% 이상을 달성해야 합니다.");
         }
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("퀴즈 결과")
-                .setMessage(
-                        resultMessage +
-                                "과목: " + currentSubjectId + "\n" +
-                                "난이도: " + getDifficultyKoreanName(currentDifficultyLevel) + "\n" +
-                                "총 출제 문제 수: " + selectedQuestions.size() + "문제\n" +
-                                "총 푼 문제 수: " + totalSolvedCount + "문제\n" +
-                                "맞춘 문제 수: " + correctCount + "문제\n" +
-                                "틀린 문제 수: " + (totalSolvedCount - correctCount) + "문제\n" +
-                                "정답률: " + String.format("%.1f", correctRate) + "%\n" +
-                                "목표 점수: " + targetScore + "점\n" +
-                                "클리어 기준: " + clearScore + "점\n" +
-                                "획득 점수: " + earnedGold + "점"
-                )
-                .setCancelable(false)
-                .setPositiveButton("확인", (dialog, which) -> closeFragment())
-                .show();
+        // 8개 항목 대시보드 구조에 할당
+        tvStatEarnedGold.setText(earnedGold + " 점");
+        tvStatAccuracy.setText(String.format("%.1f", correctRate) + "%");
+        tvStatSubject.setText(String.valueOf(currentSubjectId));
+        tvStatDifficulty.setText(getDifficultyKoreanName(currentDifficultyLevel));
+        tvStatCorrectCount.setText(correctCount + "문제");
+        tvStatWrongCount.setText(wrongCount + "문제");
+        tvStatTargetScore.setText(targetScore + "점");
+        tvStatClearScore.setText(clearScore + "점");
+
+        applyPressAnimation(btnConfirm);
+        btnConfirm.setOnClickListener(v -> {
+            dialog.dismiss();
+            closeFragment();
+        });
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.86),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
     }
 
     /**
