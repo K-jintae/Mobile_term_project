@@ -120,15 +120,15 @@
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="36dp"
         android:background="@drawable/bg_message_box"
-        android:elevation="6dp"
         android:padding="18dp"
         android:clickable="true"
         android:focusable="true"
-        android:foreground="?attr/selectableItemBackground"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        android:stateListAnimator="@null"
+        android:elevation="0dp">
 
         <TextView
             android:id="@+id/quiz_message"
@@ -364,7 +364,7 @@
             android:layout_marginBottom="12dp"
             android:text="닉네임 수정"
             android:textColor="#2B2B2B"
-            android:background="@drawable/bg_btn_inset_accent"
+            android:background="@drawable/bg_btn_inset"
             android:minHeight="0dp"
             android:paddingTop="14dp"
             android:paddingBottom="14dp"
