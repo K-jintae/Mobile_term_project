@@ -5,10 +5,10 @@
     android:background="@drawable/bg_result_popup"
     android:gravity="center_horizontal"
     android:orientation="vertical"
-    android:paddingLeft="24dp"
-    android:paddingTop="32dp"
-    android:paddingRight="24dp"
-    android:paddingBottom="28dp">
+    android:paddingLeft="20dp"
+    android:paddingTop="28dp"
+    android:paddingRight="20dp"
+    android:paddingBottom="24dp">
 
     <TextView
         android:id="@+id/tvResultTitle"
@@ -23,29 +23,254 @@
         android:id="@+id/tvResultMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="18dp"
         android:gravity="center"
-        android:text="상 난이도 목표 점수의 80% 이상을 달성했습니다.\n다음 단계가 해금되었습니다."
         android:textColor="#3A2E2B"
         android:textSize="14sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:lineSpacingMultiplier="1.25"/>
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="24dp"
-        android:maxHeight="240dp">
+        android:orientation="vertical"
+        android:layout_marginBottom="22dp">
 
-        <TextView
-            android:id="@+id/tvResultStats"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:lineSpacingMultiplier="1.3"
-            android:text="과목: 1\n난이도: 상\n총 출제 문제 수: 2문제\n정답률: 100%"
-            android:textColor="#594C47"
-            android:textSize="14sp" />
-    </ScrollView>
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:gravity="center"
+                android:layout_marginEnd="5dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="획득 점수"
+                    android:textColor="#7A6E67"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tvStatEarnedGold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="0 점"
+                    android:textColor="#3A2E2B"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:gravity="center"
+                android:layout_marginStart="5dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="정답률"
+                    android:textColor="#7A6E67"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/tvStatAccuracy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="0.0%"
+                    android:textColor="#3A2E2B"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginEnd="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="과목"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatSubject"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1"
+                    android:textColor="#594C47"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="난이도"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatDifficulty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="상"
+                    android:textColor="#594C47"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginEnd="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="맞춘 문제"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatCorrectCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0문제"
+                    android:textColor="#2E7D32"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="틀린 문제"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatWrongCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0문제"
+                    android:textColor="#C62828"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginEnd="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="목표 점수"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatTargetScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0점"
+                    android:textColor="#594C47"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_result_stat_card"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="클리어 기준"
+                    android:textColor="#7A6E67"
+                    android:textSize="13sp" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <TextView
+                    android:id="@+id/tvStatClearScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0점"
+                    android:textColor="#594C47"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnConfirm"
