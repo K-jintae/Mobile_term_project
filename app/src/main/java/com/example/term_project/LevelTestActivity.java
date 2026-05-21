@@ -357,11 +357,11 @@ public class LevelTestActivity extends AppCompatActivity {
 
         String userLevel;
 
-        if (correct >= 5) {
+        if (correct >= 6) {
 
             userLevel = "고수";
 
-        } else if (correct >= 3) {
+        } else if (correct >= 5) {
 
             userLevel = "중수";
 
@@ -372,11 +372,11 @@ public class LevelTestActivity extends AppCompatActivity {
 
         String alertMessage;
 
-        if (correct >= 5) {
+        if (correct >= 6) {
 
             alertMessage = "축하해요!! 당신은 고수의 실력을 가졌군요!";
 
-        } else if (correct >= 3) {
+        } else if (correct >= 5) {
 
             alertMessage = "오호라... 중수 레벨이라니...";
 
