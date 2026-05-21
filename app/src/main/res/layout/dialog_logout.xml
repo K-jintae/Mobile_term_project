@@ -4,12 +4,10 @@
     android:layout_height="wrap_content"
     android:background="@drawable/bg_popup_panel"
     android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingTop="20dp"
-    android:paddingEnd="20dp"
-    android:paddingBottom="26dp"
-    android:clipToPadding="false"
-    android:clipChildren="false"
+    android:paddingStart="22dp"
+    android:paddingTop="22dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="24dp"
     android:gravity="center">
 
     <TextView
