@@ -157,8 +157,11 @@ public class QuizPlayFragment extends Fragment {
         btnSubmit.setEnabled(false);
         tvQuestion.setText("문제를 불러오는 중입니다...");
 
+        //  실제 파이어스토어 DB ID를 가져오기
+        int dbSubjectId = getFirestoreSubjectId(subjectId);
+
         repository.getQuizQuestionsFromFirestore(
-                subjectId,
+                dbSubjectId, // 변환된 DB ID를 전달
                 difficultyLevel,
                 10,
                 new QuizRepository.OnQuestionsFetchedListener() {
@@ -203,7 +206,7 @@ public class QuizPlayFragment extends Fragment {
 
                         tvQuestion.setText(
                                 "출제 가능한 문제가 없습니다.\n\n" +
-                                        "과목 번호: " + currentSubjectId + "\n" +
+                                        "과목 번호: " + currentSubjectId + " (DB ID: " + dbSubjectId + ")\n" +
                                         "난이도: " + getDifficultyKoreanName(currentDifficultyLevel) + "\n\n" +
                                         e.getMessage()
                         );
@@ -726,5 +729,19 @@ public class QuizPlayFragment extends Fragment {
         }
 
         return "하";
+    }
+
+    private int getFirestoreSubjectId(int stageId) {
+        switch (stageId) {
+            case 1: return 1; // C언어 (기존 1번)
+            case 2: return 4; // 객체지향프로그래밍 (기존 4번)
+            case 3: return 7; // 자료구조 (기존 7번)
+            case 4: return 5; // 운영체제 (기존 5번)
+            case 5: return 3; // 알고리즘 (기존 3번)
+            case 6: return 8; // 컴퓨터네트워크 (기존 8번)
+            case 7: return 6; // 인공지능개론 (기존 6번)
+            case 8: return 2; // 데이터과학 (기존 2번)
+            default: return stageId;
+        }
     }
 }
