@@ -2,11 +2,13 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:fitsSystemWindows="true"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#E6F0F2">
 
+    <!-- 친구 추가 카드 -->
     <LinearLayout
         android:id="@+id/searchCard"
         android:layout_width="0dp"
@@ -61,12 +63,7 @@
                 android:minHeight="40dp"
                 android:text="취소"
                 android:textColor="#888888"
-                android:background="@drawable/btn_friend_cancel"
-                android:elevation="2dp"
-                android:translationZ="0dp"
-                android:stateListAnimator="@null"
-                android:outlineAmbientShadowColor="#18000000"
-                android:outlineSpotShadowColor="#10000000"/>
+                android:background="@drawable/btn_friend_cancel"/>
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnConfirm"
@@ -76,15 +73,12 @@
                 android:text="추가하기"
                 android:textColor="#2B2B2B"
                 android:background="@drawable/btn_friend_add"
-                android:layout_marginStart="8dp"
-                android:elevation="2dp"
-                android:translationZ="0dp"
-                android:stateListAnimator="@null"
-                android:outlineAmbientShadowColor="#18000000"
-                android:outlineSpotShadowColor="#10000000"/>
+                android:layout_marginStart="8dp"/>
         </LinearLayout>
+
     </LinearLayout>
 
+    <!-- 추천 친구 버튼 -->
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnGetRecommendations"
         android:layout_width="wrap_content"
@@ -99,10 +93,10 @@
         android:paddingVertical="8dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:visibility="visible"
         app:layout_constraintTop_toBottomOf="@id/searchCard"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- 친구 리스트 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvFriendList"
         android:layout_width="0dp"
@@ -114,5 +108,35 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 내 아이디 -->
+    <LinearLayout
+        android:id="@+id/layoutMyUserId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@id/searchCard"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/tvMyUserId"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="내 아이디: 불러오는 중..."
+            android:textColor="#333333"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="4dp"
+            android:src="@drawable/copy" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

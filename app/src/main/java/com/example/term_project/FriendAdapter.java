@@ -17,90 +17,97 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.List;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
-    private List<FriendItem> friendList;
 
-    public FriendAdapter(List<FriendItem> list){
+    private final List<FriendItem> friendList;
+
+    public FriendAdapter(List<FriendItem> list) {
         this.friendList = list;
     }
 
     @NonNull
     @Override
-    public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType){
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
+    public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_friend, parent, false);
         return new FriendViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull FriendViewHolder holder, int position){
+    public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
+
         FriendItem item = friendList.get(position);
-        
+
         holder.tvItemUserId.setText(item.getName());
-        holder.tvItemLevel.setText("레벨:  " + item.getLevel());
+        holder.tvItemLevel.setText("레벨: " + item.getLevel());
         holder.tvItemReason.setText(item.getReason());
 
-        if(item.isAlreadyFriend()){
-
-            holder.btnItemAddFriend.setVisibility(View.GONE);
-
-        } else{
-
-            holder.btnItemAddFriend.setVisibility(View.VISIBLE);
-        }
+        holder.btnItemAddFriend.setVisibility(
+                item.isAlreadyFriend() ? View.GONE : View.VISIBLE
+        );
 
         holder.btnItemAddFriend.setOnClickListener(v -> {
+
             FirebaseFirestore db = FirebaseFirestore.getInstance();
-            FirebaseAuth mAuth = FirebaseAuth.getInstance();
+            FirebaseAuth auth = FirebaseAuth.getInstance();
 
-            if(mAuth.getCurrentUser() == null){
-                return;
-            }
+            if (auth.getCurrentUser() == null) return;
 
-            String myUid = mAuth.getCurrentUser().getUid();
+            String myUid = auth.getCurrentUser().getUid();
 
             db.collection("users")
-                    .whereEqualTo("name", item.getName())
+                    .document(myUid)
                     .get()
-                    .addOnSuccessListener(aVoid -> {
+                    .addOnSuccessListener(snapshot -> {
 
-                        Toast.makeText(
-                                v.getContext(),
-                                item.getName() + "님과 친구가 되었어요!",
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        List<String> currentFriends =
+                                (List<String>) snapshot.get("friends");
 
-                        int currentPosition = holder.getAdapterPosition();
-
-                        if(currentPosition != RecyclerView.NO_POSITION){
-
-                            friendList.remove(currentPosition);
-
-                            notifyItemRemoved(currentPosition);
-
-                            notifyItemRangeChanged(
-                                    currentPosition,
-                                    friendList.size()
-                            );
+                        if (currentFriends != null && currentFriends.contains(item.getUid())) {
+                            Toast.makeText(v.getContext(),
+                                    "이미 친구입니다.", Toast.LENGTH_SHORT).show();
+                            return;
                         }
+
+                        db.collection("users")
+                                .document(myUid)
+                                .update("friends", FieldValue.arrayUnion(item.getUid()))
+                                .addOnSuccessListener(aVoid -> {
+
+                                    Toast.makeText(v.getContext(),
+                                            item.getName() + "님과 친구가 되었어요!",
+                                            Toast.LENGTH_SHORT).show();
+
+                                    int pos = holder.getAdapterPosition();
+                                    if (pos != RecyclerView.NO_POSITION) {
+                                        friendList.remove(pos);
+                                        notifyItemRemoved(pos);
+                                    }
+                                })
+                                .addOnFailureListener(e ->
+                                        Toast.makeText(v.getContext(),
+                                                "친구 추가 실패", Toast.LENGTH_SHORT).show()
+                                );
                     });
         });
-
     }
+
     @Override
-    public int getItemCount(){
+    public int getItemCount() {
         return friendList.size();
     }
-    public static class FriendViewHolder extends RecyclerView.ViewHolder{
+
+    static class FriendViewHolder extends RecyclerView.ViewHolder {
+
         TextView tvItemUserId, tvItemLevel, tvItemReason;
         ImageButton btnItemAddFriend;
-        public FriendViewHolder(@NonNull View itemView){
+
+        public FriendViewHolder(@NonNull View itemView) {
             super(itemView);
+
             tvItemUserId = itemView.findViewById(R.id.tvItemUserId);
             tvItemLevel = itemView.findViewById(R.id.tvItemLevel);
             tvItemReason = itemView.findViewById(R.id.tvItemReason);
             btnItemAddFriend = itemView.findViewById(R.id.btnItemAddFriend);
-
         }
     }
 }
-
-
