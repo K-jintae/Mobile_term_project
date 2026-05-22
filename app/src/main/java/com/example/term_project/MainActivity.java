@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isSoundOn = true;
     // 게임 재화(골드)
     private int gold = 1200;
-    private static final String PREF_USER_STATE = "user_state";
+    private static final String PREF_USER_STATE_PREFIX = "user_state_";
     private static final String KEY_LAST_LOGIN_TIME = "last_login_time";
     private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
     private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
@@ -341,18 +341,40 @@ public class MainActivity extends AppCompatActivity {
             fragmentContainer.setVisibility(View.GONE);
         }
     }
+    private SharedPreferences getCurrentUserStatePrefs() {
+        String uid = "guest";
+
+        if (mAuth != null && mAuth.getCurrentUser() != null) {
+            uid = mAuth.getCurrentUser().getUid();
+        }
+
+        return getSharedPreferences(PREF_USER_STATE_PREFIX + uid, MODE_PRIVATE);
+    }
     private void checkLongAbsenceState() {
-        SharedPreferences prefs = getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE);
+        SharedPreferences prefs = getCurrentUserStatePrefs();
 
         long now = System.currentTimeMillis();
-        long lastLoginTime = prefs.getLong(KEY_LAST_LOGIN_TIME, 0L);
+        long lastLoginTime = prefs.getLong(KEY_LAST_LOGIN_TIME, -1L);
         boolean needRecovery = prefs.getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
 
         CharacterViewModel viewModel =
                 new ViewModelProvider(this).get(CharacterViewModel.class);
 
-        if (lastLoginTime != 0L && now - lastLoginTime >= TWO_DAYS_MILLIS) {
+        // 이 계정으로 처음 접속하는 경우: 절대 울음 상태로 만들지 않음
+        if (lastLoginTime == -1L) {
+            prefs.edit()
+                    .putLong(KEY_LAST_LOGIN_TIME, now)
+                    .putBoolean(KEY_NEED_QUIZ_RECOVERY, false)
+                    .apply();
+
+            viewModel.setFace(R.drawable.face_default);
+            return;
+        }
+
+        // 기존 유저가 48시간 이상 접속하지 않은 경우에만 울음 상태 적용
+        if (now - lastLoginTime >= TWO_DAYS_MILLIS) {
             needRecovery = true;
+
             prefs.edit()
                     .putBoolean(KEY_NEED_QUIZ_RECOVERY, true)
                     .apply();
@@ -360,6 +382,8 @@ public class MainActivity extends AppCompatActivity {
 
         if (needRecovery) {
             viewModel.setFace(R.drawable.face_sad);
+        } else {
+            viewModel.setFace(R.drawable.face_default);
         }
 
         prefs.edit()
@@ -368,12 +392,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public boolean isNeedQuizRecovery() {
-        return getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE)
+        return getCurrentUserStatePrefs()
                 .getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
     }
 
     public void clearLongAbsenceStateAfterQuiz() {
-        getSharedPreferences(PREF_USER_STATE, MODE_PRIVATE)
+        getCurrentUserStatePrefs()
                 .edit()
                 .putBoolean(KEY_NEED_QUIZ_RECOVERY, false)
                 .putLong(KEY_LAST_LOGIN_TIME, System.currentTimeMillis())
@@ -386,3 +410,4 @@ public class MainActivity extends AppCompatActivity {
     }
 
 }
+

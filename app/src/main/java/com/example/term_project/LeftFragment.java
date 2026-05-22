@@ -30,7 +30,6 @@ public class LeftFragment extends Fragment {
     private LinearLayout cardQuiz6;
     private LinearLayout cardQuiz7;
     private LinearLayout cardQuiz8;
-    private LinearLayout cardQuiz9;
 
     public LeftFragment() {
         // 기본 생성자
@@ -53,7 +52,6 @@ public class LeftFragment extends Fragment {
         cardQuiz6 = view.findViewById(R.id.cardQuiz6);
         cardQuiz7 = view.findViewById(R.id.cardQuiz7);
         cardQuiz8 = view.findViewById(R.id.cardQuiz8);
-        cardQuiz9 = view.findViewById(R.id.cardQuiz9);
 
         loadProgressFromFirebase();
 
@@ -79,7 +77,6 @@ public class LeftFragment extends Fragment {
         setupCard(cardQuiz6, 6);
         setupCard(cardQuiz7, 7);
         setupCard(cardQuiz8, 8);
-        setupCard(cardQuiz9, 9);
     }
 
     /**

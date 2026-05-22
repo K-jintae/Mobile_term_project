@@ -25,6 +25,7 @@ import android.widget.FrameLayout;
 import android.app.Dialog;
 import android.widget.Button;
 import android.view.ViewGroup;
+import android.view.Window;
 
 public class MainFragment extends Fragment {
 
@@ -73,6 +74,12 @@ public class MainFragment extends Fragment {
         faceImage = view.findViewById(R.id.face_image);
         hatImage = view.findViewById(R.id.hat_image);
         tvMessage = view.findViewById(R.id.tv_message);
+        View btnContinueQuiz = view.findViewById(R.id.quiz_container);
+
+        if (btnContinueQuiz != null) {
+            applyPressAnimation(btnContinueQuiz);
+            btnContinueQuiz.setOnClickListener(v -> showContinueQuizDialog());
+        }
 
         ImageButton btnSettings = view.findViewById(R.id.btnSettings);
         dimView = view.findViewById(R.id.dimView);
@@ -158,11 +165,7 @@ public class MainFragment extends Fragment {
         logoutBtn.setOnClickListener(v -> {
             Dialog logoutDialog = new Dialog(requireContext());
             logoutDialog.setContentView(R.layout.dialog_logout);
-            logoutDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            logoutDialog.getWindow().setLayout(
-                    (int)(getResources().getDisplayMetrics().widthPixels * 0.85),
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
+            logoutDialog.setCancelable(true);
 
             Button btnCancel = logoutDialog.findViewById(R.id.btnCancel);
             Button btnConfirm = logoutDialog.findViewById(R.id.btnConfirm);
@@ -172,23 +175,32 @@ public class MainFragment extends Fragment {
             btnConfirm.setOnClickListener(v1 -> {
                 hideSettingsPopup(() -> {
                     com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
-                    // 기기 내부 자동로그인 해제
+
                     SharedPreferences pref = requireActivity()
                             .getSharedPreferences("user", requireContext().MODE_PRIVATE);
                     SharedPreferences.Editor editor = pref.edit();
                     editor.putBoolean("isLogin", false);
                     editor.apply();
 
-                    // 로그인 창으로 이동하면서 기존 화면(메인 창)들을 메모리에서 완전히 삭제
                     Intent intent = new Intent(getActivity(), LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     requireActivity().finish();
                 });
+
                 logoutDialog.dismiss();
             });
 
             logoutDialog.show();
+
+            if (logoutDialog.getWindow() != null) {
+                logoutDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+                logoutDialog.getWindow().setGravity(android.view.Gravity.CENTER);
+                logoutDialog.getWindow().setLayout(
+                        (int) (getResources().getDisplayMetrics().widthPixels * 0.78),
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+            }
         });
 
 
@@ -614,6 +626,64 @@ public class MainFragment extends Fragment {
 
         if (tvMessage != null) {
             tvMessage.setText(message);
+        }
+    }
+    private void continueQuiz() {
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences("continue_quiz", Context.MODE_PRIVATE);
+
+        boolean hasContinue = prefs.getBoolean("has_continue", false);
+
+        if (!hasContinue) {
+            Toast.makeText(getActivity(), "이어풀 문제가 없어요.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int subjectId = prefs.getInt("subject_id", 1);
+        String difficultyLevel = prefs.getString("difficulty_level", "easy");
+
+        Bundle bundle = new Bundle();
+        bundle.putInt("subject_id", subjectId);
+        bundle.putString("difficulty_level", difficultyLevel);
+        bundle.putBoolean("continue_mode", true);
+
+        QuizPlayFragment fragment = new QuizPlayFragment();
+        fragment.setArguments(bundle);
+
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openFragment(fragment);
+        }
+    }
+    private void showContinueQuizDialog() {
+        Dialog dialog = new Dialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_continue_quiz, null);
+
+        dialog.setContentView(dialogView);
+        dialog.setCancelable(true);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirm);
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnConfirm.setOnClickListener(v -> {
+            dialog.dismiss();
+            continueQuiz();
+        });
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.82),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
         }
     }
 }

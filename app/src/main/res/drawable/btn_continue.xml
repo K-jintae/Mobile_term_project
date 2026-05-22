@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 눌렀을 때 -->
+    <!-- 눌렸을 때 -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
 
-            <solid android:color="#CDBBA2"/>
+            <solid android:color="#D2C2AE" />
 
-            <corners android:radius="20dp"/>
+            <corners android:radius="24dp"/>
 
             <stroke
-                android:width="1.5dp"
-                android:color="#2B2B2B"/>
+                android:width="2dp"
+                android:color="#111111"/>
         </shape>
     </item>
 
@@ -19,13 +19,13 @@
     <item>
         <shape android:shape="rectangle">
 
-            <solid android:color="#D8CCBA"/>
+            <solid android:color="#DFD3C3" />
 
-            <corners android:radius="20dp"/>
+            <corners android:radius="24dp"/>
 
             <stroke
-                android:width="1.5dp"
-                android:color="#2B2B2B"/>
+                android:width="2dp"
+                android:color="#111111"/>
         </shape>
     </item>
 

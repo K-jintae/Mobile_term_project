@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="300dp"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_popup_panel"
     android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingTop="20dp"
-    android:paddingEnd="20dp"
-    android:paddingBottom="26dp"
-    android:clipToPadding="false"
-    android:clipChildren="false"
+    android:paddingStart="22dp"
+    android:paddingTop="22dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="24dp"
     android:gravity="center">
 
     <TextView
@@ -36,10 +34,10 @@
             android:layout_height="50dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_btn_popup_inset_red"
+            android:background="@drawable/btn_continue_cancel"
             android:backgroundTint="@null"
             android:text="아니오"
-            android:textColor="#FFFFFF"
+            android:textColor="#2B2B2B"
             android:textSize="14sp"
             android:textAllCaps="false"
             android:elevation="6dp" />
@@ -50,7 +48,7 @@
             android:layout_height="50dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="@drawable/bg_btn_popup_inset"
+            android:background="@drawable/btn_continue"
             android:backgroundTint="@null"
             android:text="네"
             android:textColor="#2B2B2B"
