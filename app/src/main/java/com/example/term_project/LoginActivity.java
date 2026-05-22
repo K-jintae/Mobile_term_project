@@ -53,22 +53,47 @@ public class LoginActivity extends AppCompatActivity {
 
         // 자동 로그인 체크
         if (mAuth.getCurrentUser() != null) {
+
             String uid = mAuth.getCurrentUser().getUid();
 
             db.collection("users").document(uid).get()
                     .addOnSuccessListener(documentSnapshot -> {
+
                         if (documentSnapshot.exists()) {
-                            Boolean isTested = documentSnapshot.getBoolean("isTested");
+
+                            Boolean isTested =
+                                    documentSnapshot.getBoolean("isTested");
 
                             if (isTested == null || !isTested) {
-                                startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
+
+                                startActivity(
+                                        new Intent(
+                                                LoginActivity.this,
+                                                LevelTestActivity.class
+                                        )
+                                );
+
                             } else {
-                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+
+                                startActivity(
+                                        new Intent(
+                                                LoginActivity.this,
+                                                MainActivity.class
+                                        )
+                                );
                             }
 
                             finish();
+
                         } else {
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+
+                            startActivity(
+                                    new Intent(
+                                            LoginActivity.this,
+                                            MainActivity.class
+                                    )
+                            );
+
                             finish();
                         }
                     });
@@ -111,81 +136,125 @@ public class LoginActivity extends AppCompatActivity {
 
         // 아이디 중복 확인
         checkIdBtn.setOnClickListener(v -> {
+
             String id = signupId.getText().toString().trim();
 
             idError.setVisibility(View.VISIBLE);
 
             if (id.isEmpty()) {
+
                 idError.setText("아이디를 입력해주세요.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 isIdChecked = false;
                 return;
             }
 
             if (id.length() < 4) {
+
                 idError.setText("아이디는 4글자 이상입니다.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 isIdChecked = false;
                 return;
             }
 
             if (!id.matches("^[a-zA-Z0-9]+$")) {
+
                 idError.setText("아이디는 영어와 숫자만 가능합니다.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 isIdChecked = false;
                 return;
             }
 
-            String email = id + "@termproject.com";
+            // Firestore에서 직접 아이디 중복 확인
+            db.collection("users")
+                    .whereEqualTo("id", id)
+                    .get()
+                    .addOnSuccessListener(queryDocumentSnapshots -> {
 
-            mAuth.fetchSignInMethodsForEmail(email)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            boolean isUsed =
-                                    task.getResult() != null
-                                            && task.getResult().getSignInMethods() != null
-                                            && !task.getResult().getSignInMethods().isEmpty();
+                        if (!queryDocumentSnapshots.isEmpty()) {
 
-                            if (isUsed) {
-                                idError.setText("이미 사용 중인 아이디입니다.");
-                                idError.setTextColor(getColor(android.R.color.holo_red_dark));
-                                isIdChecked = false;
-                            } else {
-                                idError.setText("✔ 사용 가능한 아이디입니다.");
-                                idError.setTextColor(getColor(android.R.color.holo_green_dark));
-                                isIdChecked = true;
-                                checkedId = id;
-                            }
-                        } else {
-                            idError.setText("중복 확인 실패");
-                            idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                            idError.setText("이미 사용 중인 아이디입니다.");
+                            idError.setTextColor(
+                                    getColor(android.R.color.holo_red_dark)
+                            );
+
                             isIdChecked = false;
+
+                        } else {
+
+                            idError.setText("✔ 사용 가능한 아이디입니다.");
+                            idError.setTextColor(
+                                    getColor(android.R.color.holo_green_dark)
+                            );
+
+                            isIdChecked = true;
+                            checkedId = id;
                         }
+                    })
+                    .addOnFailureListener(e -> {
+
+                        idError.setText("중복 확인 실패");
+                        idError.setTextColor(
+                                getColor(android.R.color.holo_red_dark)
+                        );
+
+                        isIdChecked = false;
                     });
         });
 
-        // 아이디 중복 확인 후 아이디 수정하면 다시 확인하도록
-        signupId.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+        // 아이디 수정하면 다시 중복확인 필요
+        signupId.addTextChangedListener(
+                new android.text.TextWatcher() {
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                isIdChecked = false;
-                idError.setVisibility(View.GONE);
-            }
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after
+                    ) {
+                    }
 
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-            }
-        });
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count
+                    ) {
+
+                        isIdChecked = false;
+                        idError.setVisibility(View.GONE);
+                    }
+
+                    @Override
+                    public void afterTextChanged(
+                            android.text.Editable s
+                    ) {
+                    }
+                }
+        );
 
         // 회원가입
         signupBtn.setOnClickListener(v -> {
-            String id = signupId.getText().toString().trim();
-            String pw = signupPw.getText().toString().trim();
-            String name = signupName.getText().toString().trim();
+
+            String id =
+                    signupId.getText().toString().trim();
+
+            String pw =
+                    signupPw.getText().toString().trim();
+
+            String name =
+                    signupName.getText().toString().trim();
 
             idError.setVisibility(View.GONE);
             pwError.setVisibility(View.GONE);
@@ -193,105 +262,171 @@ public class LoginActivity extends AppCompatActivity {
 
             // 아이디 검사
             if (id.isEmpty()) {
+
                 idError.setText("아이디를 입력해주세요.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!id.matches("^[a-zA-Z0-9]+$")) {
+
                 idError.setText("아이디는 영어와 숫자만 가능합니다.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (id.length() < 4) {
+
                 idError.setText("아이디는 4글자 이상이어야 합니다.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!isIdChecked) {
+
                 idError.setText("아이디 중복 확인을 해주세요.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 idError.setVisibility(View.VISIBLE);
                 return;
             }
 
             if (!id.equals(checkedId)) {
+
                 idError.setText("아이디를 다시 확인해주세요.");
-                idError.setTextColor(getColor(android.R.color.holo_red_dark));
+                idError.setTextColor(
+                        getColor(android.R.color.holo_red_dark)
+                );
+
                 idError.setVisibility(View.VISIBLE);
+
                 isIdChecked = false;
                 return;
             }
 
             // 비밀번호 검사
             if (pw.isEmpty()) {
+
                 pwError.setText("비밀번호를 입력해주세요.");
                 pwError.setVisibility(View.VISIBLE);
+
                 return;
             }
 
-            if (pw.length() < 8 || !pw.matches(".*[!@#$%^&*()].*")) {
-                pwError.setText("비밀번호는 8자 이상, 특수문자를 포함해야 합니다.");
+            if (pw.length() < 8 ||
+                    !pw.matches(".*[!@#$%^&*()].*")) {
+
+                pwError.setText(
+                        "비밀번호는 8자 이상, 특수문자를 포함해야 합니다."
+                );
+
                 pwError.setVisibility(View.VISIBLE);
+
                 return;
             }
 
             // 닉네임 검사
             if (name.isEmpty()) {
+
                 nameError.setText("닉네임을 입력해주세요.");
                 nameError.setVisibility(View.VISIBLE);
+
                 return;
             }
 
+            // Firebase Auth는 내부적으로 이메일 형식 유지
             String email = id + "@termproject.com";
 
             mAuth.createUserWithEmailAndPassword(email, pw)
                     .addOnCompleteListener(this, task -> {
-                        if (task.isSuccessful()) {
-                            String uid = mAuth.getCurrentUser().getUid();
 
-                            Map<String, Object> newUser = new HashMap<>();
+                        if (task.isSuccessful()) {
+
+                            String uid =
+                                    mAuth.getCurrentUser().getUid();
+
+                            Map<String, Object> newUser =
+                                    new HashMap<>();
+
+                            // 실제 아이디 저장
+                            newUser.put("id", id);
+
                             newUser.put("gold", 100);
                             newUser.put("name", name);
 
-                            // 레벨테스트 아직 안 함
+                            // 레벨테스트 여부
                             newUser.put("isTested", false);
 
-                            // 기본 캐릭터/진행도 초기값
+                            // 기본 캐릭터
                             newUser.put("hat", "none");
                             newUser.put("clothes", "none");
-                            newUser.put("interior", "background_hill");
+                            newUser.put(
+                                    "interior",
+                                    "background_hill"
+                            );
 
+                            // 스테이지
                             newUser.put("unlocked_stage_1", true);
                             newUser.put("unlocked_stage_2", false);
                             newUser.put("unlocked_stage_3", false);
                             newUser.put("unlocked_stage_4", false);
                             newUser.put("unlocked_stage_5", false);
 
-                            db.collection("users").document(uid).set(newUser)
+                            db.collection("users")
+                                    .document(uid)
+                                    .set(newUser)
                                     .addOnSuccessListener(aVoid -> {
-                                        SharedPreferences.Editor editor = pref.edit();
+
+                                        SharedPreferences.Editor editor =
+                                                pref.edit();
+
                                         editor.putString("name", name);
                                         editor.apply();
 
-                                        Toast.makeText(this, "회원가입 완료!", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(
+                                                this,
+                                                "회원가입 완료!",
+                                                Toast.LENGTH_SHORT
+                                        ).show();
 
-                                        // 회원가입 직후 레벨테스트로 이동
-                                        startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
+                                        startActivity(
+                                                new Intent(
+                                                        LoginActivity.this,
+                                                        LevelTestActivity.class
+                                                )
+                                        );
+
                                         finish();
                                     })
                                     .addOnFailureListener(e -> {
-                                        Toast.makeText(this, "유저 정보 저장 실패", Toast.LENGTH_SHORT).show();
+
+                                        Toast.makeText(
+                                                this,
+                                                "유저 정보 저장 실패",
+                                                Toast.LENGTH_SHORT
+                                        ).show();
                                     });
+
                         } else {
+
                             Toast.makeText(
                                     this,
-                                    "가입 실패: " + task.getException().getMessage(),
+                                    "가입 실패: "
+                                            + task.getException().getMessage(),
                                     Toast.LENGTH_LONG
                             ).show();
                         }
@@ -300,50 +435,120 @@ public class LoginActivity extends AppCompatActivity {
 
         // 로그인
         loginBtn.setOnClickListener(v -> {
-            String inputId = idInput.getText().toString().trim();
-            String inputPw = pwInput.getText().toString().trim();
+
+            String inputId =
+                    idInput.getText().toString().trim();
+
+            String inputPw =
+                    pwInput.getText().toString().trim();
 
             loginError.setVisibility(View.GONE);
 
             if (inputId.isEmpty() || inputPw.isEmpty()) {
-                loginError.setText("아이디와 비밀번호를 입력해주세요.");
+
+                loginError.setText(
+                        "아이디와 비밀번호를 입력해주세요."
+                );
+
                 loginError.setVisibility(View.VISIBLE);
+
                 return;
             }
 
-            String email = inputId + "@termproject.com";
+            // Auth 로그인은 내부 이메일 사용
+            String email =
+                    inputId + "@termproject.com";
 
-            mAuth.signInWithEmailAndPassword(email, inputPw)
+            mAuth.signInWithEmailAndPassword(
+                            email,
+                            inputPw
+                    )
                     .addOnCompleteListener(this, task -> {
+
                         if (task.isSuccessful()) {
-                            String uid = mAuth.getCurrentUser().getUid();
 
-                            db.collection("users").document(uid).get()
-                                    .addOnSuccessListener(documentSnapshot -> {
-                                        if (documentSnapshot.exists()) {
-                                            String name = documentSnapshot.getString("name");
-                                            if (name != null && !name.isEmpty()) {
-                                                SharedPreferences.Editor editor = pref.edit();
-                                                editor.putString("name", name);
-                                                editor.apply();
-                                            }
+                            String uid =
+                                    mAuth.getCurrentUser().getUid();
 
-                                            Boolean isTested = documentSnapshot.getBoolean("isTested");
+                            db.collection("users")
+                                    .document(uid)
+                                    .get()
+                                    .addOnSuccessListener(
+                                            documentSnapshot -> {
 
-                                            if (isTested == null || !isTested) {
-                                                startActivity(new Intent(LoginActivity.this, LevelTestActivity.class));
-                                            } else {
-                                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                                            }
+                                                if (
+                                                        documentSnapshot.exists()
+                                                ) {
 
-                                            finish();
-                                        } else {
-                                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                                            finish();
-                                        }
-                                    });
+                                                    String name =
+                                                            documentSnapshot.getString(
+                                                                    "name"
+                                                            );
+
+                                                    if (
+                                                            name != null
+                                                                    && !name.isEmpty()
+                                                    ) {
+
+                                                        SharedPreferences.Editor editor =
+                                                                pref.edit();
+
+                                                        editor.putString(
+                                                                "name",
+                                                                name
+                                                        );
+
+                                                        editor.apply();
+                                                    }
+
+                                                    Boolean isTested =
+                                                            documentSnapshot.getBoolean(
+                                                                    "isTested"
+                                                            );
+
+                                                    if (
+                                                            isTested == null
+                                                                    || !isTested
+                                                    ) {
+
+                                                        startActivity(
+                                                                new Intent(
+                                                                        LoginActivity.this,
+                                                                        LevelTestActivity.class
+                                                                )
+                                                        );
+
+                                                    } else {
+
+                                                        startActivity(
+                                                                new Intent(
+                                                                        LoginActivity.this,
+                                                                        MainActivity.class
+                                                                )
+                                                        );
+                                                    }
+
+                                                    finish();
+
+                                                } else {
+
+                                                    startActivity(
+                                                            new Intent(
+                                                                    LoginActivity.this,
+                                                                    MainActivity.class
+                                                            )
+                                                    );
+
+                                                    finish();
+                                                }
+                                            });
+
                         } else {
-                            loginError.setText("아이디 또는 비밀번호가 틀렸습니다.");
+
+                            loginError.setText(
+                                    "아이디 또는 비밀번호가 틀렸습니다."
+                            );
+
                             loginError.setVisibility(View.VISIBLE);
                         }
                     });
