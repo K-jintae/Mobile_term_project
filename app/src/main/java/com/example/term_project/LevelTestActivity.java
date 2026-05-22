@@ -411,6 +411,9 @@ public class LevelTestActivity extends AppCompatActivity {
                 setKnapsackCapacityScore
         );
 
+        //db에 레벨 저장
+        updates.put("level", userLevel);
+
         db.collection("users")
                 .document(uid)
                 .update(updates)

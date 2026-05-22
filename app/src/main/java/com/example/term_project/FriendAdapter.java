@@ -34,9 +34,18 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position){
         FriendItem item = friendList.get(position);
         
-        holder.tvItemUserId.setText(item.getUserId());
+        holder.tvItemUserId.setText(item.getName());
         holder.tvItemLevel.setText("레벨:  " + item.getLevel());
         holder.tvItemReason.setText(item.getReason());
+
+        if(item.isAlreadyFriend()){
+
+            holder.btnItemAddFriend.setVisibility(View.GONE);
+
+        } else{
+
+            holder.btnItemAddFriend.setVisibility(View.VISIBLE);
+        }
 
         holder.btnItemAddFriend.setOnClickListener(v -> {
             FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -49,22 +58,28 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
             String myUid = mAuth.getCurrentUser().getUid();
 
             db.collection("users")
-                    .whereEqualTo("name", item.getUserId())
+                    .whereEqualTo("name", item.getName())
                     .get()
-                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                        if(!queryDocumentSnapshots.isEmpty()) {
-                            String friendUid = queryDocumentSnapshots.getDocuments().get(0).getId();
+                    .addOnSuccessListener(aVoid -> {
 
-                            if (friendUid.equals(myUid)) {
-                                Toast.makeText(v.getContext(), "자기자신은 추가할 수 없음", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
+                        Toast.makeText(
+                                v.getContext(),
+                                item.getName() + "님과 친구가 되었어요!",
+                                Toast.LENGTH_SHORT
+                        ).show();
 
-                            db.collection("users").document(myUid)
-                                    .update("friends", FieldValue.arrayUnion(friendUid))
-                                    .addOnSuccessListener(aVoid -> {
-                                        Toast.makeText(v.getContext(), item.getUserId() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
-                                    });
+                        int currentPosition = holder.getAdapterPosition();
+
+                        if(currentPosition != RecyclerView.NO_POSITION){
+
+                            friendList.remove(currentPosition);
+
+                            notifyItemRemoved(currentPosition);
+
+                            notifyItemRangeChanged(
+                                    currentPosition,
+                                    friendList.size()
+                            );
                         }
                     });
         });
