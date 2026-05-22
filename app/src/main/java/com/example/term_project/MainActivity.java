@@ -143,6 +143,10 @@ public class MainActivity extends AppCompatActivity {
                     db.collection("users").document(uid).set(newUser);
                 }
             });
+            // test code
+            com.google.firebase.database.FirebaseDatabase database = com.google.firebase.database.FirebaseDatabase.getInstance();
+            com.google.firebase.database.DatabaseReference myRef = database.getReference("test_message");
+            myRef.setValue("realtime database 연결 성공!");
         }
 
         // 저장된 유저 닉네임 불러오기
@@ -380,4 +384,5 @@ public class MainActivity extends AppCompatActivity {
 
         viewModel.setFace(R.drawable.face_default);
     }
+
 }

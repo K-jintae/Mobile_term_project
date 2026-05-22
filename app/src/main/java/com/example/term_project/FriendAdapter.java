@@ -13,7 +13,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
@@ -60,8 +63,12 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
                                 return;
                             }
 
-                            db.collection("users").document(myUid)
-                                    .update("friends", FieldValue.arrayUnion(friendUid))
+                            // 변경된 부분: Friends 컬렉션에 내 UID 문서 아래에 친구 UID를 true로 저장
+                            Map<String, Object> friendData = new HashMap<>();
+                            friendData.put(friendUid, true);
+
+                            db.collection("Friends").document(myUid)
+                                    .set(friendData, SetOptions.merge()) // 기존 친구 목록을 유지하며 새 친구 병합
                                     .addOnSuccessListener(aVoid -> {
                                         Toast.makeText(v.getContext(), item.getUserId() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
                                     });

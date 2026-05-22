@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "582733129619",
+    "firebase_url": "https://mobiltermproject-db-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "mobiltermproject-db",
     "storage_bucket": "mobiltermproject-db.firebasestorage.app"
   },
