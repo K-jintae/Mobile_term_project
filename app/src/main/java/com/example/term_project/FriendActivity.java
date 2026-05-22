@@ -2,34 +2,33 @@ package com.example.term_project;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-import android.util.Log;
-import com.google.firebase.firestore.DocumentSnapshot;
-
-import com.google.firebase.firestore.SetOptions;
-import java.util.HashMap;
-import java.util.Map;
-
-import androidx.annotation.NonNull;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FriendActivity extends AppCompatActivity {
     private EditText etFriendEmail;
@@ -37,16 +36,17 @@ public class FriendActivity extends AppCompatActivity {
     private RecyclerView rvFriendList;
     private FriendAdapter adapter;
     private List<FriendItem> friendList = new ArrayList<>();
+
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
 
     private Set<String> excludedUids = new HashSet<>();
     private List<String> myFriendsList = new ArrayList<>();
     private String myLevel = "중";
-
     private boolean isMyFriendMode = true;
 
-    private List<com.google.firebase.database.ValueEventListener> presenceListeners = new ArrayList<>();
+    // Realtime Database 리스너 관리를 위한 리스트 (메모리 누수 방지)
+    private List<ValueEventListener> presenceListeners = new ArrayList<>();
     private List<DatabaseReference> presenceRefs = new ArrayList<>();
 
     @Override
@@ -68,32 +68,27 @@ public class FriendActivity extends AppCompatActivity {
         rvFriendList.setAdapter(adapter);
 
         btnConfirm.setOnClickListener(v -> addFriendById());
-
         if (btnCancel != null) {
             btnCancel.setOnClickListener(v -> finish());
         }
 
-
         btnGetRecommendations.setOnClickListener(v -> {
             if (isMyFriendMode) {
-                // 현재 '내 친구 목록'인 상태에서 눌렀으므로 ➔ 추천 친구 모드로 전환
                 isMyFriendMode = false;
-                btnGetRecommendations.setText("추천 친구"); // 버튼 글자 변경
-                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F5EBE0"))); // 색상 하이라이트
+                btnGetRecommendations.setText("추천 친구");
+                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F5EBE0")));
                 loadFriendRecommendations();
             } else {
-                // 현재 '추천 친구 목록'인 상태에서 눌렀으므로 ➔ 내 친구 모드로 원상복구
                 isMyFriendMode = true;
-                btnGetRecommendations.setText("내 친구"); // 버튼 글자 변경
-                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF"))); // 색상 기본화
+                btnGetRecommendations.setText("내 친구");
+                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
                 loadMyRealFriends();
             }
         });
 
-
+        // 초기 화면: 내 친구 목록 로드
         isMyFriendMode = true;
         btnGetRecommendations.setText("내 친구");
-        btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
         loadMyRealFriends();
     }
 
@@ -111,7 +106,7 @@ public class FriendActivity extends AppCompatActivity {
                         String lv = documentSnapshot.getString("level");
                         myLevel = (lv != null) ? lv : "하";
 
-                        // 새로운 Friends 컬렉션에서 내 친구 목록 가져오기
+                        // 최상위 Friends 컬렉션에서 내 문서 딱 1번만 읽기 (최고 효율)
                         db.collection("Friends").document(myUid).get()
                                 .addOnSuccessListener(friendDoc -> {
                                     if (friendDoc.exists() && friendDoc.getData() != null && !friendDoc.getData().isEmpty()) {
@@ -132,13 +127,13 @@ public class FriendActivity extends AppCompatActivity {
                                                             int position = friendList.size() - 1;
                                                             adapter.notifyDataSetChanged();
 
-                                                            // 실시간 상태 확인 (기존 코드와 동일)
-                                                            DatabaseReference friendStatusRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                                                            // Realtime Database 실시간 온/오프라인 연결
+                                                            DatabaseReference friendStatusRef = FirebaseDatabase.getInstance()
                                                                     .getReference("/status/" + friendUid);
 
-                                                            com.google.firebase.database.ValueEventListener listener = new com.google.firebase.database.ValueEventListener() {
+                                                            ValueEventListener listener = new ValueEventListener() {
                                                                 @Override
-                                                                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot) {
+                                                                public void onDataChange(@NonNull DataSnapshot snapshot) {
                                                                     if (snapshot.exists()) {
                                                                         String status = snapshot.getValue(String.class);
                                                                         if ("online".equals(status)) {
@@ -151,7 +146,7 @@ public class FriendActivity extends AppCompatActivity {
                                                                 }
 
                                                                 @Override
-                                                                public void onCancelled(com.google.firebase.database.DatabaseError error) {}
+                                                                public void onCancelled(@NonNull DatabaseError error) {}
                                                             };
                                                             friendStatusRef.addValueEventListener(listener);
                                                             presenceRefs.add(friendStatusRef);
@@ -167,21 +162,50 @@ public class FriendActivity extends AppCompatActivity {
                 });
     }
 
-    private void removePresenceListeners(){
-        for(int i = 0; i < presenceRefs.size(); i++){
-            if (presenceRefs.get(i) != null && presenceListeners.get(i) !=null) {
-                presenceRefs.get(i).removeEventListener(presenceListeners.get(i));
-            }
+    private void addFriendById() {
+        String inputId = etFriendEmail.getText().toString().trim();
+        if (inputId.isEmpty()) {
+            Toast.makeText(this, "아이디를 입력해주세요", Toast.LENGTH_SHORT).show();
+            return;
         }
-        presenceRefs.clear();
-        presenceListeners.clear();
+
+        if (mAuth.getCurrentUser() == null) return;
+
+        db.collection("users")
+                .whereEqualTo("userId", inputId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        String friendUid = queryDocumentSnapshots.getDocuments().get(0).getId();
+                        String myUid = mAuth.getCurrentUser().getUid();
+
+                        if (friendUid.equals(myUid)) {
+                            Toast.makeText(this, "자기 자신은 추가할 수 없습니다", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        if (myFriendsList.contains(friendUid)) {
+                            Toast.makeText(this, "이미 친구로 등록된 유저입니다!", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        Map<String, Object> friendData = new HashMap<>();
+                        friendData.put(friendUid, true);
+
+                        // 독립 컬렉션에 병합 저장
+                        db.collection("Friends").document(myUid)
+                                .set(friendData, SetOptions.merge())
+                                .addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(this, "친구 추가 완료!", Toast.LENGTH_SHORT).show();
+                                    etFriendEmail.setText("");
+                                    loadMyRealFriends(); // 리스트 갱신
+                                });
+                    } else {
+                        Toast.makeText(this, "존재하지 않는 유저입니다", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
-    @Override
-    protected void onDestroy(){
-        super.onDestroy();
-        removePresenceListeners();
-    }
     private void loadFriendRecommendations() {
         friendList.clear();
         excludedUids.clear();
@@ -189,11 +213,8 @@ public class FriendActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
 
         String myUid = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : null;
-        if (myUid != null) {
-            excludedUids.add(myUid);
-        } else {
-            return;
-        }
+        if (myUid != null) excludedUids.add(myUid);
+        else return;
 
         db.collection("users").document(myUid).get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -201,7 +222,6 @@ public class FriendActivity extends AppCompatActivity {
                         String lv = documentSnapshot.getString("level");
                         myLevel = (lv != null) ? lv : "하";
 
-                        // 추천 친구를 위해 Friends 컬렉션 참조
                         db.collection("Friends").document(myUid).get()
                                 .addOnSuccessListener(friendDoc -> {
                                     if (friendDoc.exists() && friendDoc.getData() != null && !friendDoc.getData().isEmpty()) {
@@ -214,11 +234,8 @@ public class FriendActivity extends AppCompatActivity {
                                     }
                                 })
                                 .addOnFailureListener(e -> fetchRandomRecommendations());
-                    } else {
-                        fetchRandomRecommendations();
                     }
-                })
-                .addOnFailureListener(e -> fetchRandomRecommendations());
+                });
     }
 
     private void fetchFriendsOfFriends() {
@@ -226,9 +243,7 @@ public class FriendActivity extends AppCompatActivity {
             fetchRandomRecommendations();
             return;
         }
-
         final int[] remainingTasks = {myFriendsList.size()};
-
         for (String friendUid : myFriendsList) {
             db.collection("Friends").document(friendUid).get()
                     .addOnSuccessListener(doc -> {
@@ -255,7 +270,6 @@ public class FriendActivity extends AppCompatActivity {
     }
 
     private void fetchLevelRecommendations() {
-
         db.collection("users")
                 .whereEqualTo("level", myLevel)
                 .limit(40)
@@ -272,14 +286,12 @@ public class FriendActivity extends AppCompatActivity {
     }
 
     private void fetchRandomRecommendations() {
-
         db.collection("users")
                 .limit(40)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<DocumentSnapshot> docs = new ArrayList<>(queryDocumentSnapshots.getDocuments());
                     Collections.shuffle(docs);
-
                     int count = 0;
                     for (DocumentSnapshot doc : docs) {
                         String uid = doc.getId();
@@ -287,10 +299,7 @@ public class FriendActivity extends AppCompatActivity {
                             addRecommendedUserToList(uid, "추천친구");
                             excludedUids.add(uid);
                             count++;
-
-                            if (count >= 40) {
-                                break;
-                            }
+                            if (count >= 40) break;
                         }
                     }
                 })
@@ -302,10 +311,7 @@ public class FriendActivity extends AppCompatActivity {
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
                         String userId = doc.getString("userId");
-                        if (userId == null) {
-                            userId = doc.getString("name");
-                        }
-
+                        if (userId == null) userId = doc.getString("name");
                         String lv = doc.getString("level");
                         String levelStr = (lv != null) ? lv : "하";
 
@@ -316,50 +322,19 @@ public class FriendActivity extends AppCompatActivity {
                 });
     }
 
-    private void addFriendById() {
-        String inputId = etFriendEmail.getText().toString().trim();
-        if (inputId.isEmpty()) {
-            Toast.makeText(this, "아이디를 입력해라", Toast.LENGTH_SHORT).show();
-            return;
+    private void removePresenceListeners() {
+        for (int i = 0; i < presenceRefs.size(); i++) {
+            if (presenceRefs.get(i) != null && presenceListeners.get(i) != null) {
+                presenceRefs.get(i).removeEventListener(presenceListeners.get(i));
+            }
         }
+        presenceRefs.clear();
+        presenceListeners.clear();
+    }
 
-        if (mAuth.getCurrentUser() == null) return;
-
-        db.collection("users")
-                .whereEqualTo("userId", inputId)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        String friendUid = queryDocumentSnapshots.getDocuments().get(0).getId();
-                        String myUid = mAuth.getCurrentUser().getUid();
-
-                        if (friendUid.equals(myUid)) {
-                            Toast.makeText(this, "자기 자신은 추가할 수 없습니다", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        // Friends 컬렉션에 저장하도록 변경
-                        Map<String, Object> friendData = new HashMap<>();
-                        friendData.put(friendUid, true);
-
-                        db.collection("Friends").document(myUid)
-                                .set(friendData, SetOptions.merge())
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "친구 추가 완료!", Toast.LENGTH_SHORT).show();
-                                    etFriendEmail.setText("");
-
-                                    friendList.clear();
-                                    myFriendsList.clear();
-                                    excludedUids.clear();
-
-                                    isMyFriendMode = true;
-                                    btnGetRecommendations.setText("추천 친구");
-                                    btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
-                                    loadMyRealFriends();
-                                });
-                    } else {
-                        Toast.makeText(this, "존재하지 않는 유저입니다", Toast.LENGTH_SHORT).show();
-                    }
-                });
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        removePresenceListeners();
     }
 }
