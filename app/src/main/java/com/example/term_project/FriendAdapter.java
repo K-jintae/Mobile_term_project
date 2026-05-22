@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
-    private List<FriendItem> friendList;
+
+    private final List<FriendItem> friendList;
 
     public FriendAdapter(List<FriendItem> list) {
         this.friendList = list;
@@ -28,7 +29,8 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     @NonNull
     @Override
     public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_friend, parent, false);
         return new FriendViewHolder(view);
     }
 
@@ -36,61 +38,49 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
 
-        holder.tvItemUserId.setText(item.getUserId());
-        holder.tvItemLevel.setText("레벨:  " + item.getLevel());
+        // 이름, 레벨 표시 로직
+        holder.tvItemUserId.setText(item.getName());
+        holder.tvItemLevel.setText("레벨: " + item.getLevel());
         holder.tvItemReason.setText(item.getReason());
 
+        // 이미 친구면 추가 버튼 숨기기
+        holder.btnItemAddFriend.setVisibility(
+                item.isAlreadyFriend() ? View.GONE : View.VISIBLE
+        );
+
         holder.btnItemAddFriend.setOnClickListener(v -> {
+
             FirebaseFirestore db = FirebaseFirestore.getInstance();
-            FirebaseAuth mAuth = FirebaseAuth.getInstance();
+            FirebaseAuth auth = FirebaseAuth.getInstance();
 
-            if (mAuth.getCurrentUser() == null) return;
-
-            String myUid = mAuth.getCurrentUser().getUid();
-
-            // 유저의 이름(userId)을 바탕으로 상대방의 UID 조회
-            db.collection("users")
-                    .whereEqualTo("userId", item.getUserId())
-                    .get()
-                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                        if (!queryDocumentSnapshots.isEmpty()) {
-                            String friendUid = queryDocumentSnapshots.getDocuments().get(0).getId();
+            if (auth.getCurrentUser() == null) return;
+            String myUid = auth.getCurrentUser().getUid();
 
 
-                            if (friendUid.equals(myUid)) {
-                                Toast.makeText(v.getContext(), "자기 자신은 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
+            String friendUid = item.getUid();
 
-                            Map<String, Object> friendData = new HashMap<>();
-                            friendData.put(friendUid, true);
+            if (friendUid.equals(myUid)) {
+                Toast.makeText(v.getContext(), "자기 자신은 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-                            // 가장 효율적인 최상위 독립 컬렉션 방식 처리
-                            db.collection("Friends").document(myUid)
-                                    .set(friendData, SetOptions.merge())
-                                    .addOnSuccessListener(aVoid -> {
-                                        Toast.makeText(v.getContext(), item.getUserId() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
-                                    });
-                        } else {
-                            // 혹시 userId 필드 대신 name 필드로 저장되어 있을 경우를 위한 예외 처리 예시
-                            db.collection("users")
-                                    .whereEqualTo("name", item.getUserId())
-                                    .get()
-                                    .addOnSuccessListener(snapshots -> {
-                                        if(!snapshots.isEmpty()) {
-                                            String friendUid = snapshots.getDocuments().get(0).getId();
-                                            Map<String, Object> friendData = new HashMap<>();
-                                            friendData.put(friendUid, true);
+            Map<String, Object> friendData = new HashMap<>();
+            friendData.put(friendUid, true);
 
-                                            db.collection("Friends").document(myUid)
-                                                    .set(friendData, SetOptions.merge())
-                                                    .addOnSuccessListener(aVoid -> {
-                                                        Toast.makeText(v.getContext(), item.getUserId() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
-                                                    });
-                                        }
-                                    });
+            db.collection("Friends").document(myUid)
+                    .set(friendData, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(v.getContext(), item.getName() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
+
+                        int pos = holder.getAdapterPosition();
+                        if (pos != RecyclerView.NO_POSITION) {
+                            friendList.remove(pos);
+                            notifyItemRemoved(pos);
                         }
-                    });
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(v.getContext(), "친구 추가 실패", Toast.LENGTH_SHORT).show()
+                    );
         });
     }
 
@@ -99,7 +89,7 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         return friendList.size();
     }
 
-    public static class FriendViewHolder extends RecyclerView.ViewHolder {
+    static class FriendViewHolder extends RecyclerView.ViewHolder {
         TextView tvItemUserId, tvItemLevel, tvItemReason;
         ImageButton btnItemAddFriend;
 

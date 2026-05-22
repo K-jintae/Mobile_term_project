@@ -1,10 +1,13 @@
 package com.example.term_project;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -31,23 +34,26 @@ import java.util.Map;
 import java.util.Set;
 
 public class FriendActivity extends AppCompatActivity {
+
     private EditText etFriendEmail;
     private Button btnConfirm, btnCancel, btnGetRecommendations;
     private RecyclerView rvFriendList;
+    private TextView tvMyUserId;
+
     private FriendAdapter adapter;
-    private List<FriendItem> friendList = new ArrayList<>();
+    private final List<FriendItem> friendList = new ArrayList<>();
 
     private FirebaseFirestore db;
-    private FirebaseAuth mAuth;
+    private FirebaseAuth auth;
 
-    private Set<String> excludedUids = new HashSet<>();
+    private final Set<String> excludedUids = new HashSet<>();
     private List<String> myFriendsList = new ArrayList<>();
-    private String myLevel = "중";
+
+    private String myLevel;
     private boolean isMyFriendMode = true;
 
-    // Realtime Database 리스너 관리를 위한 리스트 (메모리 누수 방지)
-    private List<ValueEventListener> presenceListeners = new ArrayList<>();
-    private List<DatabaseReference> presenceRefs = new ArrayList<>();
+    private final List<DatabaseReference> presenceRefs = new ArrayList<>();
+    private final List<ValueEventListener> presenceListeners = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,155 +61,115 @@ public class FriendActivity extends AppCompatActivity {
         setContentView(R.layout.activity_friend);
 
         db = FirebaseFirestore.getInstance();
-        mAuth = FirebaseAuth.getInstance();
+        auth = FirebaseAuth.getInstance();
 
         etFriendEmail = findViewById(R.id.etFriendEmail);
         btnConfirm = findViewById(R.id.btnConfirm);
         btnCancel = findViewById(R.id.btnCancel);
         btnGetRecommendations = findViewById(R.id.btnGetRecommendations);
         rvFriendList = findViewById(R.id.rvFriendList);
+        tvMyUserId = findViewById(R.id.tvMyUserId);
 
-        adapter = new FriendAdapter(friendList);
-        rvFriendList.setLayoutManager(new LinearLayoutManager(this));
-        rvFriendList.setAdapter(adapter);
+        LinearLayout layoutMyUserId = findViewById(R.id.layoutMyUserId);
 
-        btnConfirm.setOnClickListener(v -> addFriendById());
-        if (btnCancel != null) {
-            btnCancel.setOnClickListener(v -> finish());
-        }
+        setupMyId(layoutMyUserId);
+        setupRecycler();
+        setupButtons();
 
-        btnGetRecommendations.setOnClickListener(v -> {
-            if (isMyFriendMode) {
-                isMyFriendMode = false;
-                btnGetRecommendations.setText("추천 친구");
-                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F5EBE0")));
-                loadFriendRecommendations();
-            } else {
-                isMyFriendMode = true;
-                btnGetRecommendations.setText("내 친구");
-                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
-                loadMyRealFriends();
-            }
-        });
-
-        // 초기 화면: 내 친구 목록 로드
-        isMyFriendMode = true;
-        btnGetRecommendations.setText("내 친구");
         loadMyRealFriends();
     }
 
-    private void loadMyRealFriends() {
-        String myUid = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : null;
-        if (myUid == null) return;
+    private void setupRecycler() {
+        adapter = new FriendAdapter(friendList);
+        rvFriendList.setLayoutManager(new LinearLayoutManager(this));
+        rvFriendList.setAdapter(adapter);
+    }
 
-        removePresenceListeners();
-        friendList.clear();
-        myFriendsList.clear();
+    private void setupMyId(LinearLayout layout) {
+        if (auth.getCurrentUser() == null) return;
+        String myUid = auth.getCurrentUser().getUid();
 
         db.collection("users").document(myUid).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String lv = documentSnapshot.getString("level");
-                        myLevel = (lv != null) ? lv : "하";
+                .addOnSuccessListener(doc -> {
+                    String myId = doc.getString("id");
+                    if (myId == null) myId = doc.getString("name");
+                    if (myId == null) return;
 
-                        // 최상위 Friends 컬렉션에서 내 문서 딱 1번만 읽기 (최고 효율)
-                        db.collection("Friends").document(myUid).get()
-                                .addOnSuccessListener(friendDoc -> {
-                                    if (friendDoc.exists() && friendDoc.getData() != null && !friendDoc.getData().isEmpty()) {
-                                        Set<String> friends = friendDoc.getData().keySet();
-                                        myFriendsList.addAll(friends);
+                    tvMyUserId.setText("내 아이디: " + myId);
+                    tvMyUserId.setPaintFlags(tvMyUserId.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
 
-                                        for (String friendUid : friends) {
-                                            db.collection("users").document(friendUid).get()
-                                                    .addOnSuccessListener(doc -> {
-                                                        if (doc.exists()) {
-                                                            String userId = doc.getString("userId");
-                                                            if (userId == null) userId = doc.getString("name");
-                                                            String flv = doc.getString("level");
-                                                            String levelStr = (flv != null) ? flv : "하";
-
-                                                            FriendItem item = new FriendItem(userId, levelStr, "내 친구 ○ 오프라인");
-                                                            friendList.add(item);
-                                                            int position = friendList.size() - 1;
-                                                            adapter.notifyDataSetChanged();
-
-                                                            // Realtime Database 실시간 온/오프라인 연결
-                                                            DatabaseReference friendStatusRef = FirebaseDatabase.getInstance()
-                                                                    .getReference("/status/" + friendUid);
-
-                                                            ValueEventListener listener = new ValueEventListener() {
-                                                                @Override
-                                                                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                                                    if (snapshot.exists()) {
-                                                                        String status = snapshot.getValue(String.class);
-                                                                        if ("online".equals(status)) {
-                                                                            item.setReason("내 친구 ● 접속중");
-                                                                        } else {
-                                                                            item.setReason("내 친구 ○ 오프라인");
-                                                                        }
-                                                                        adapter.notifyItemChanged(position);
-                                                                    }
-                                                                }
-
-                                                                @Override
-                                                                public void onCancelled(@NonNull DatabaseError error) {}
-                                                            };
-                                                            friendStatusRef.addValueEventListener(listener);
-                                                            presenceRefs.add(friendStatusRef);
-                                                            presenceListeners.add(listener);
-                                                        }
-                                                    });
-                                        }
-                                    } else {
-                                        Toast.makeText(this, "등록된 친구가 없습니다. 추천을 받아보세요!", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                    }
+                    String finalMyId = myId;
+                    layout.setOnClickListener(v -> {
+                        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        ClipData clip = ClipData.newPlainText("id", finalMyId);
+                        cm.setPrimaryClip(clip);
+                        Toast.makeText(this, "아이디 복사 완료", Toast.LENGTH_SHORT).show();
+                    });
                 });
     }
 
-    private void addFriendById() {
-        String inputId = etFriendEmail.getText().toString().trim();
-        if (inputId.isEmpty()) {
-            Toast.makeText(this, "아이디를 입력해주세요", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void setupButtons() {
+        btnConfirm.setOnClickListener(v -> addFriendById());
+        if (btnCancel != null) btnCancel.setOnClickListener(v -> finish());
 
-        if (mAuth.getCurrentUser() == null) return;
+        btnGetRecommendations.setOnClickListener(v -> {
+            isMyFriendMode = !isMyFriendMode;
+            friendList.clear();
+            adapter.notifyDataSetChanged();
 
-        db.collection("users")
-                .whereEqualTo("userId", inputId)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        String friendUid = queryDocumentSnapshots.getDocuments().get(0).getId();
-                        String myUid = mAuth.getCurrentUser().getUid();
+            if (isMyFriendMode) {
+                btnGetRecommendations.setText("추천 친구");
+                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
+                loadMyRealFriends();
+            } else {
+                btnGetRecommendations.setText("내 친구");
+                btnGetRecommendations.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F5EBE0")));
+                loadFriendRecommendations();
+            }
+        });
+    }
 
-                        if (friendUid.equals(myUid)) {
-                            Toast.makeText(this, "자기 자신은 추가할 수 없습니다", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
+    private void loadMyRealFriends() {
+        String myUid = auth.getCurrentUser().getUid();
+        removeListeners();
+        friendList.clear();
+        myFriendsList.clear();
+        adapter.notifyDataSetChanged();
 
-                        if (myFriendsList.contains(friendUid)) {
-                            Toast.makeText(this, "이미 친구로 등록된 유저입니다!", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
+        db.collection("users").document(myUid).get().addOnSuccessListener(doc -> {
+            myLevel = doc.getString("level");
 
-                        Map<String, Object> friendData = new HashMap<>();
-                        friendData.put(friendUid, true);
+            db.collection("Friends").document(myUid).get().addOnSuccessListener(friendDoc -> {
+                if (friendDoc.exists() && friendDoc.getData() != null && !friendDoc.getData().isEmpty()) {
+                    Set<String> friends = friendDoc.getData().keySet();
+                    myFriendsList.addAll(friends);
 
-                        // 독립 컬렉션에 병합 저장
-                        db.collection("Friends").document(myUid)
-                                .set(friendData, SetOptions.merge())
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "친구 추가 완료!", Toast.LENGTH_SHORT).show();
-                                    etFriendEmail.setText("");
-                                    loadMyRealFriends(); // 리스트 갱신
-                                });
-                    } else {
-                        Toast.makeText(this, "존재하지 않는 유저입니다", Toast.LENGTH_SHORT).show();
+                    for (String uid : friends) {
+                        loadFriendItem(uid);
                     }
-                });
+                } else {
+                    Toast.makeText(this, "등록된 친구가 없습니다.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private void loadFriendItem(String uid) {
+        db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
+            if (!isMyFriendMode || !doc.exists()) return;
+
+            String name = doc.getString("name");
+            if (name == null) name = doc.getString("id");
+            String level = doc.getString("level");
+            String levelStr = (level != null) ? level : "레벨 없음";
+
+            // 5파라미터 FriendItem 사용!
+            FriendItem item = new FriendItem(uid, name, levelStr, "내 친구 ○ 오프라인", true);
+            friendList.add(item);
+            adapter.notifyItemInserted(friendList.size() - 1);
+
+            attachPresence(uid, item);
+        });
     }
 
     private void loadFriendRecommendations() {
@@ -212,117 +178,171 @@ public class FriendActivity extends AppCompatActivity {
         myFriendsList.clear();
         adapter.notifyDataSetChanged();
 
-        String myUid = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : null;
-        if (myUid != null) excludedUids.add(myUid);
-        else return;
+        String myUid = auth.getCurrentUser().getUid();
+        excludedUids.add(myUid);
 
-        db.collection("users").document(myUid).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String lv = documentSnapshot.getString("level");
-                        myLevel = (lv != null) ? lv : "하";
+        db.collection("users").document(myUid).get().addOnSuccessListener(doc -> {
+            myLevel = doc.getString("level");
 
-                        db.collection("Friends").document(myUid).get()
-                                .addOnSuccessListener(friendDoc -> {
-                                    if (friendDoc.exists() && friendDoc.getData() != null && !friendDoc.getData().isEmpty()) {
-                                        Set<String> friends = friendDoc.getData().keySet();
-                                        myFriendsList.addAll(friends);
-                                        excludedUids.addAll(friends);
-                                        fetchFriendsOfFriends();
-                                    } else {
-                                        fetchRandomRecommendations();
-                                    }
-                                })
-                                .addOnFailureListener(e -> fetchRandomRecommendations());
-                    }
-                });
+            db.collection("Friends").document(myUid).get().addOnSuccessListener(friendDoc -> {
+                if (friendDoc.exists() && friendDoc.getData() != null) {
+                    myFriendsList.addAll(friendDoc.getData().keySet());
+                    excludedUids.addAll(myFriendsList);
+                }
+                fetchFriendsOfFriends();
+            });
+        });
     }
 
     private void fetchFriendsOfFriends() {
         if (myFriendsList.isEmpty()) {
-            fetchRandomRecommendations();
+            fetchLevelRecommendations();
             return;
         }
-        final int[] remainingTasks = {myFriendsList.size()};
-        for (String friendUid : myFriendsList) {
-            db.collection("Friends").document(friendUid).get()
+
+        final int[] left = {myFriendsList.size()};
+        for (String uid : myFriendsList) {
+            db.collection("Friends").document(uid).get()
                     .addOnSuccessListener(doc -> {
                         if (doc.exists() && doc.getData() != null) {
-                            Set<String> FofF = doc.getData().keySet();
-                            for (String uid : FofF) {
-                                if (!excludedUids.contains(uid)) {
-                                    addRecommendedUserToList(uid, "1순위 (함께 아는 친구)");
-                                    excludedUids.add(uid);
-                                }
+                            for (String fofUid : doc.getData().keySet()) {
+                                addRecommendedUser(fofUid, "1순위 (함께 아는 친구)");
                             }
                         }
-                        checkAndProceed(remainingTasks);
+                        checkDone(left);
                     })
-                    .addOnFailureListener(e -> checkAndProceed(remainingTasks));
+                    .addOnFailureListener(e -> checkDone(left));
         }
     }
 
-    private void checkAndProceed(int[] remainingTasks) {
-        remainingTasks[0]--;
-        if (remainingTasks[0] == 0) {
+    private void checkDone(int[] left) {
+        left[0]--;
+        if (left[0] == 0) {
             fetchLevelRecommendations();
         }
     }
 
     private void fetchLevelRecommendations() {
-        db.collection("users")
-                .whereEqualTo("level", myLevel)
-                .limit(40)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String uid = doc.getId();
-                        if (!excludedUids.contains(uid)) {
-                            addRecommendedUserToList(uid, "2순위 비슷한 레벨");
-                            excludedUids.add(uid);
-                        }
+        String levelQuery = (myLevel != null) ? myLevel : "하";
+        db.collection("users").whereEqualTo("level", levelQuery).limit(40).get()
+                .addOnSuccessListener(q -> {
+                    for (DocumentSnapshot doc : q) {
+                        addRecommendedUser(doc.getId(), "2순위 비슷한 레벨");
                     }
+                    fetchRandomRecommendations();
                 });
     }
 
     private void fetchRandomRecommendations() {
-        db.collection("users")
-                .limit(40)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<DocumentSnapshot> docs = new ArrayList<>(queryDocumentSnapshots.getDocuments());
+        db.collection("users").limit(40).get()
+                .addOnSuccessListener(q -> {
+                    List<DocumentSnapshot> docs = new ArrayList<>(q.getDocuments());
                     Collections.shuffle(docs);
-                    int count = 0;
                     for (DocumentSnapshot doc : docs) {
-                        String uid = doc.getId();
-                        if (!excludedUids.contains(uid)) {
-                            addRecommendedUserToList(uid, "추천친구");
-                            excludedUids.add(uid);
-                            count++;
-                            if (count >= 40) break;
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> Log.e("firebase", "랜덤 추천 로드 실패", e));
-    }
-
-    private void addRecommendedUserToList(String uid, String reason) {
-        db.collection("users").document(uid).get()
-                .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        String userId = doc.getString("userId");
-                        if (userId == null) userId = doc.getString("name");
-                        String lv = doc.getString("level");
-                        String levelStr = (lv != null) ? lv : "하";
-
-                        FriendItem item = new FriendItem(userId, levelStr, reason);
-                        friendList.add(item);
-                        adapter.notifyDataSetChanged();
+                        addRecommendedUser(doc.getId(), "추천 친구");
                     }
                 });
     }
 
-    private void removePresenceListeners() {
+    private void addRecommendedUser(String uid, String reason) {
+        if (isMyFriendMode) return;
+        String myUid = auth.getCurrentUser().getUid();
+
+        // 자기자신이거나 이미 확인된 유저, 혹은 내 친구라면 스킵
+        if (uid.equals(myUid) || excludedUids.contains(uid) || myFriendsList.contains(uid)) return;
+
+        excludedUids.add(uid);
+
+        db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
+            if (!doc.exists() || isMyFriendMode) return;
+            String name = doc.getString("name");
+            if (name == null) name = doc.getString("id");
+            String level = doc.getString("level");
+            String levelStr = (level != null) ? level : "레벨 없음";
+
+            FriendItem item = new FriendItem(uid, name, levelStr, reason, false);
+            friendList.add(item);
+            adapter.notifyItemInserted(friendList.size() - 1);
+        });
+    }
+
+    // 아이디 검색 및 Friends 독립 컬렉션 추가 로직
+    private void addFriendById() {
+        String input = etFriendEmail.getText().toString().trim();
+        if (input.isEmpty()) {
+            Toast.makeText(this, "아이디를 입력해주세요", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 1차 검색: id 필드
+        db.collection("users").whereEqualTo("id", input).get().addOnSuccessListener(q -> {
+            if (!q.isEmpty()) {
+                handleFriendAdd(q.getDocuments().get(0).getId());
+            } else {
+                // 2차 검색: name 필드
+                db.collection("users").whereEqualTo("name", input).get().addOnSuccessListener(nameQ -> {
+                    if (!nameQ.isEmpty()) {
+                        handleFriendAdd(nameQ.getDocuments().get(0).getId());
+                    } else {
+                        Toast.makeText(this, "존재하지 않는 유저입니다", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
+    private void handleFriendAdd(String friendUid) {
+        String myUid = auth.getCurrentUser().getUid();
+
+        if (friendUid.equals(myUid) || myFriendsList.contains(friendUid)) {
+            Toast.makeText(this, "자기 자신이나 이미 등록된 친구는 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Map<String, Object> friendData = new HashMap<>();
+        friendData.put(friendUid, true);
+
+        // 우리의 강력한 Friends 저장 방식 유지!
+        db.collection("Friends").document(myUid).set(friendData, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "친구 추가 완료!", Toast.LENGTH_SHORT).show();
+                    etFriendEmail.setText("");
+                    removeFromList(friendUid);
+                });
+    }
+
+    private void removeFromList(String uid) {
+        for (int i = 0; i < friendList.size(); i++) {
+            if (friendList.get(i).getUid().equals(uid)) {
+                friendList.remove(i);
+                adapter.notifyItemRemoved(i);
+                return;
+            }
+        }
+    }
+
+    // 실시간 상태 확인 리스너
+    private void attachPresence(String uid, FriendItem item) {
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("/status/" + uid);
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!isMyFriendMode) return;
+                String status = snapshot.getValue(String.class);
+
+                item.setReason("online".equals(status) ? "내 친구 ● 접속중" : "내 친구 ○ 오프라인");
+                int pos = friendList.indexOf(item);
+                if (pos != -1) adapter.notifyItemChanged(pos);
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+        ref.addValueEventListener(listener);
+        presenceRefs.add(ref);
+        presenceListeners.add(listener);
+    }
+
+    private void removeListeners() {
         for (int i = 0; i < presenceRefs.size(); i++) {
             if (presenceRefs.get(i) != null && presenceListeners.get(i) != null) {
                 presenceRefs.get(i).removeEventListener(presenceListeners.get(i));
@@ -335,6 +355,6 @@ public class FriendActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        removePresenceListeners();
+        removeListeners();
     }
 }
