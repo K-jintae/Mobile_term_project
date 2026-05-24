@@ -126,6 +126,15 @@ public class MainActivity extends AppCompatActivity {
                         if (interiorResId != 0) viewModel.setInterior(interiorResId);
                     }
 
+                    //서버에 저장된 레벨을 해당 계정 전용 로컬 파일에 동기화
+                    String userLevel = doc.getString("level");
+                    if (userLevel != null) {
+                        getSharedPreferences("user_" + uid, MODE_PRIVATE)
+                                .edit()
+                                .putString("level", userLevel)
+                                .apply();
+                    }
+
                     // 골드 업데이트가 끝나면 화면을 다시 투명하게
                     updateTopBar();
 
@@ -140,17 +149,19 @@ public class MainActivity extends AppCompatActivity {
                     newUser.put("clothes", "none");
                     newUser.put("background", "none");
                     newUser.put("friends", new java.util.ArrayList<String>());
+
+                    newUser.put("unlocked_stage_2", true);
+                    newUser.put("unlocked_stage_3", true);
+                    newUser.put("unlocked_stage_4", true);
+
                     db.collection("users").document(uid).set(newUser);
                 }
             });
-            // test code
-            com.google.firebase.database.FirebaseDatabase database = com.google.firebase.database.FirebaseDatabase.getInstance();
-            com.google.firebase.database.DatabaseReference myRef = database.getReference("test_message");
-            myRef.setValue("realtime database 연결 성공!");
         }
 
-        // 저장된 유저 닉네임 불러오기
-        SharedPreferences prefs = getSharedPreferences("user", MODE_PRIVATE);
+        // 저장된 유저 닉네임 불러오는 곳도 uid 기반 파일로 변경
+        String currentUid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+        SharedPreferences prefs = getSharedPreferences("user_" + currentUid, MODE_PRIVATE);
         String nickname = prefs.getString("name", "기본닉네임");
 
         // 상단 정보 표시
@@ -252,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
         if (mAuth.getCurrentUser() != null) {
             String uid = mAuth.getCurrentUser().getUid();
             db.collection("users").document(uid)
-                    .update("gold", FieldValue.increment(amount)) // 💡 기존 골드에 amount만큼 더함
+                    .update("gold", FieldValue.increment(amount)) // 기존 골드에 amount만큼 더함
                     .addOnSuccessListener(aVoid -> {
                         // 상단바 코인 텍스트가 있다면 여기서 갱신해줍니다.
                         // tvGold.setText(String.valueOf(this.gold));
@@ -269,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
         gold += amount;
         updateTopBar();
         if (mAuth.getCurrentUser() != null) {
-            // 🔥 에러 해결의 핵심: 여기서 uid가 누구인지 정의해 줍니다!
+            // uid
             String uid = mAuth.getCurrentUser().getUid();
 
             db.collection("users").document(uid)
@@ -408,6 +419,5 @@ public class MainActivity extends AppCompatActivity {
 
         viewModel.setFace(R.drawable.face_default);
     }
-
 }
 
