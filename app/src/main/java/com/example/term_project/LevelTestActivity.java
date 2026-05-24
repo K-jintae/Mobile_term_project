@@ -419,6 +419,12 @@ public class LevelTestActivity extends AppCompatActivity {
                 .update(updates)
                 .addOnSuccessListener(aVoid -> {
 
+                    // 파일명 뒤에 _uid를 붙여 이 계정 전용 파일에 저장
+                    getSharedPreferences("user_" + uid, MODE_PRIVATE)
+                            .edit()
+                            .putString("level", userLevel)
+                            .apply();
+
                     AlertDialog dialog =
                             new AlertDialog.Builder(this)
                                     .setTitle("레벨 테스트 결과")
@@ -430,16 +436,18 @@ public class LevelTestActivity extends AppCompatActivity {
                                     .create();
 
                     dialog.setCancelable(false);
-
                     dialog.show();
                 });
     }
 
     private void moveToMain() {
 
-        startActivity(
-                new Intent(this, MainActivity.class)
-        );
+        Intent intent = new Intent(this, MainActivity.class);
+
+        //  기존에 쌓여있던 모든 액티비티 스택을 완전히 비우고 새 액티비티로 시작
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        startActivity(intent);
 
         finish();
     }
