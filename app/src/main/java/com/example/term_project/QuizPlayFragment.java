@@ -538,17 +538,18 @@ public class QuizPlayFragment extends Fragment {
 
         if (canUnlockNextStage()) {
             editor.putInt("stage_" + currentSubjectId + "_clear", 1);
-            editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
+            //editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
         }
 
         editor.apply();
 
         if (canUnlockNextStage()) {
-            saveNextStageUnlockToFirebase();
+            //saveNextStageUnlockToFirebase();
+            saveHardClearToFirebase();
         }
     }
 
-    private void saveNextStageUnlockToFirebase() {
+    private void saveHardClearToFirebase() {
         com.google.firebase.auth.FirebaseAuth mAuth =
                 com.google.firebase.auth.FirebaseAuth.getInstance();
 
@@ -558,10 +559,11 @@ public class QuizPlayFragment extends Fragment {
 
         String uid = mAuth.getCurrentUser().getUid();
 
+        // cleared_hard_stage_N 형태로 저장하여 어떤 과목의 상 난이도를 깼는지 기록
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(uid)
-                .update("unlocked_stage_" + (currentSubjectId + 1), true);
+                .update("cleared_hard_stage_" + currentSubjectId, true);
     }
 
     private void showFinalResult() {
@@ -641,6 +643,12 @@ public class QuizPlayFragment extends Fragment {
     }
 
     private void closeFragment() {
+
+        //퀴즈 종료되면 LeftFragment 갱신 유도
+        Bundle result = new Bundle();
+        result.putBoolean("refresh", true);
+        getParentFragmentManager().setFragmentResult("quiz_result", result);
+
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).closeCurrentFragment();
         }
