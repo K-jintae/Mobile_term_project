@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_LAST_LOGIN_TIME = "last_login_time";
     private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
     private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -263,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
         if (mAuth.getCurrentUser() != null) {
             String uid = mAuth.getCurrentUser().getUid();
             db.collection("users").document(uid)
-                    .update("gold", FieldValue.increment(amount)) // 기존 골드에 amount만큼 더함
+                    .update("gold", FieldValue.increment(amount)) // 💡 기존 골드에 amount만큼 더함
                     .addOnSuccessListener(aVoid -> {
                         // 상단바 코인 텍스트가 있다면 여기서 갱신해줍니다.
                         // tvGold.setText(String.valueOf(this.gold));
@@ -280,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
         gold += amount;
         updateTopBar();
         if (mAuth.getCurrentUser() != null) {
-            // uid
+            // 🔥 에러 해결의 핵심: 여기서 uid가 누구인지 정의해 줍니다!
             String uid = mAuth.getCurrentUser().getUid();
 
             db.collection("users").document(uid)
