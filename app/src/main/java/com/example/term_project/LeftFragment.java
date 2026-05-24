@@ -20,7 +20,6 @@ import androidx.fragment.app.Fragment;
 
 public class LeftFragment extends Fragment {
 
-    private SharedPreferences prefs;
 
     private LinearLayout cardQuiz1;
     private LinearLayout cardQuiz2;
@@ -35,13 +34,28 @@ public class LeftFragment extends Fragment {
         // 기본 생성자
     }
 
+    private SharedPreferences getQuizPrefs() {
+        String uid = "guest";
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) {
+            uid = auth.getCurrentUser().getUid();
+        }
+        return requireContext().getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_left, container, false);
 
-        prefs = requireContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+        //현재 로그인한 유저의 uid를 획득하여 전용 진척도 파일 연결
+        String uid = "guest";
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) {
+            uid = auth.getCurrentUser().getUid();
+        }
+
 
         // fragment_left.xml의 1~9번 과목 카드 연결
         cardQuiz1 = view.findViewById(R.id.cardQuiz1);
@@ -128,20 +142,58 @@ public class LeftFragment extends Fragment {
         Button btnHard = dialogView.findViewById(R.id.btnHard);
         TextView btnCancel = dialogView.findViewById(R.id.btnCancelDifficulty);
 
+        // 안전하게 현재 로그인한 유저의 UID 가져오기
+        String uid = "guest";
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) {
+            uid = auth.getCurrentUser().getUid();
+        }
+
+        // 각 난이도별 클리어 기록 불러오기 (순차 해금용)
+        SharedPreferences currentPrefs = getQuizPrefs();
+        boolean isEasyCleared = currentPrefs.getInt("subject_" + stageId + "_easy_clear", 0) == 1;
+        boolean isNormalCleared = currentPrefs.getInt("subject_" + stageId + "_normal_clear", 0) == 1;
+
+        //  유저의 등급 불러오기 (기본 해금용)
+        SharedPreferences userPrefs = requireContext().getSharedPreferences("user_" + uid, Context.MODE_PRIVATE);
+        String userLevel = userPrefs.getString("level", "하수");
+
+
+        // 1. '하(Easy)' 난이도는 누구나 입장 가능
         btnEasy.setOnClickListener(v -> {
             dialog.dismiss();
             moveToQuizPlay(stageId, "easy");
         });
 
-        btnNormal.setOnClickListener(v -> {
-            dialog.dismiss();
-            moveToQuizPlay(stageId, "normal");
-        });
+        // 2. '중(Normal)' 난이도 제어:
+        // 해당 과목의 '하' 난이도를 깼거나 OR 유저 레벨이 '중수', '고수'면 오픈
+        if (isEasyCleared || "중수".equals(userLevel) || "고수".equals(userLevel)) {
+            btnNormal.setAlpha(1.0f);
+            btnNormal.setOnClickListener(v -> {
+                dialog.dismiss();
+                moveToQuizPlay(stageId, "normal");
+            });
+        } else {
+            btnNormal.setAlpha(0.4f);
+            btnNormal.setOnClickListener(v ->
+                    Toast.makeText(getContext(), "먼저 '하' 난이도를 클리어하거나 중수 레벨이 되어야 합니다.", Toast.LENGTH_SHORT).show()
+            );
+        }
 
-        btnHard.setOnClickListener(v -> {
-            dialog.dismiss();
-            moveToQuizPlay(stageId, "hard");
-        });
+        // 3. '상(Hard)' 난이도 제어:
+        // 해당 과목의 '중' 난이도를 깼거나 OR 유저 레벨이 '고수'면 오픈
+        if (isNormalCleared || "고수".equals(userLevel)) {
+            btnHard.setAlpha(1.0f);
+            btnHard.setOnClickListener(v -> {
+                dialog.dismiss();
+                moveToQuizPlay(stageId, "hard");
+            });
+        } else {
+            btnHard.setAlpha(0.4f);
+            btnHard.setOnClickListener(v ->
+                    Toast.makeText(getContext(), "먼저 '중' 난이도를 클리어하거나 고수 레벨이 되어야 합니다.", Toast.LENGTH_SHORT).show()
+            );
+        }
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
@@ -177,7 +229,7 @@ public class LeftFragment extends Fragment {
                     .get()
                     .addOnSuccessListener(doc -> {
                         if (doc.exists() && isAdded()) {
-                            SharedPreferences.Editor editor = prefs.edit();
+                            SharedPreferences.Editor editor = getQuizPrefs().edit();
 
                             for (int i = 2; i <= 9; i++) {
                                 Boolean isUnlocked = doc.getBoolean("unlocked_stage_" + i);
@@ -207,18 +259,19 @@ public class LeftFragment extends Fragment {
      * 2단계 이상은 stage_N_before_clear 값이 1이어야 가능.
      */
     private boolean canPlayStage(int stageId) {
-        if (stageId == 1) {
+        if (stageId <= 4) {
             return true;
         }
 
-        return prefs.getInt("stage_" + stageId + "_before_clear", 0) == 1;
+        // 동적 헬퍼 메서드로 교체
+        return getQuizPrefs().getInt("stage_" + stageId + "_before_clear", 0) == 1;
     }
 
     /**
      * 잠긴 카드 클릭 시 안내 메시지.
      */
     private String getLockedMessage(int stageId) {
-        if (stageId == 1) {
+        if (stageId <= 4) {
             return "플레이 가능합니다.";
         }
 
