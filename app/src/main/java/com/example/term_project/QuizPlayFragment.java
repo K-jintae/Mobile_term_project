@@ -369,6 +369,11 @@ public class QuizPlayFragment extends Fragment {
         currentQuestionIndex++;
         showQuestionByIndex();
     }
+    // 로그인 유저의 UID를 안전하게 가져오는 메서드
+    private String getPrefUid() {
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        return (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : "guest";
+    }
 
     private void saveContinueQuiz(int nextIndex) {
         if (getContext() == null) {
@@ -380,7 +385,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
+                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE);
 
         prefs.edit()
                 .putBoolean("has_continue", true)
@@ -399,7 +404,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
+                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE);
 
         boolean hasContinue = prefs.getBoolean("has_continue", false);
 
@@ -423,7 +428,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE)
+                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .apply();
@@ -522,7 +527,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+                .getSharedPreferences("quiz_progress_" + getPrefUid(), Context.MODE_PRIVATE);
 
         SharedPreferences.Editor editor = prefs.edit();
 
