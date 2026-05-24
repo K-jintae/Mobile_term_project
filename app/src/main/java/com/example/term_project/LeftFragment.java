@@ -69,6 +69,11 @@ public class LeftFragment extends Fragment {
 
         loadProgressFromFirebase();
 
+        getParentFragmentManager().setFragmentResultListener("quiz_result", getViewLifecycleOwner(), (requestKey, bundle) -> {
+            // 신호를 받으면 즉시 보유 티켓 수와 카드 상태를 최신화
+            refreshCards();
+        });
+
         return view;
     }
 
@@ -94,9 +99,7 @@ public class LeftFragment extends Fragment {
     }
 
     /**
-     * 각 카드의 입장 가능 여부를 설정한다.
-     * 해금된 카드는 난이도 선택창을 띄우고,
-     * 잠긴 카드는 안내 메시지만 띄운다.
+     * 각 카드의 입장 및 자율 해금 여부를 설정한다.
      */
     private void setupCard(LinearLayout card, int stageId) {
         if (card == null) {
@@ -106,17 +109,218 @@ public class LeftFragment extends Fragment {
         boolean canPlay = canPlayStage(stageId);
 
         if (canPlay) {
+            // 플레이 가능한 과목
             card.setAlpha(1.0f);
             card.setOnClickListener(v -> showDifficultyDialog(stageId));
         } else {
-            card.setAlpha(0.5f);
-            card.setOnClickListener(v ->
-                    Toast.makeText(
-                            getContext(),
-                            getLockedMessage(stageId),
-                            Toast.LENGTH_SHORT
-                    ).show()
+            // 아직 해금되지 않은 과목
+            int tickets = getAvailableUnlockTickets();
+
+            // MainActivity로부터 실시간 보유 골드 획득
+            int currentGold = 0;
+            if (getActivity() instanceof MainActivity) {
+                currentGold = ((MainActivity) getActivity()).getGold();
+            }
+
+            // 해금권이 있거나, 혹은 3000 골드 이상 있다면 해금 가능 상태로 표시
+            if (tickets > 0 || currentGold >= 300) {
+                card.setAlpha(0.6f);
+                card.setOnClickListener(v -> showUnlockOptionsDialog(stageId));
+            } else {
+                //  둘 다 없다면 잠금 안내 메시지 변경 및 어둡게 표시
+                card.setAlpha(0.3f);
+                card.setOnClickListener(v ->
+                        Toast.makeText(
+                                getContext(),
+                                "사용 가능한 해금권이 없거나 골드가 부족합니다. (필요 골드: 300 G)",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                );
+            }
+        }
+    }
+
+    /**
+     * 사용 가능한 해금권 개수를 실시간으로 계산합니다.
+     */
+    private int getAvailableUnlockTickets() {
+        SharedPreferences prefs = getQuizPrefs();
+        int hardClearCount = 0;
+        int manuallyUnlockedCount = 0;
+
+        for (int i = 1; i <= 8; i++) {
+            // 1. 상 난이도 클리어한 과목 수 체크
+            if (prefs.getInt("subject_" + i + "_hard_clear", 0) == 1) {
+                hardClearCount++;
+            }
+            // 2. 5과목 이상 중 이미 해금되어 플레이 가능한 과목 수 체크
+            if (i > 4 && prefs.getInt("stage_" + i + "_before_clear", 0) == 1) {
+                // 티켓으로 연 경우에만 해금권을 차감하도록 골드 해금 여부 필터링
+                if (prefs.getInt("stage_" + i + "_unlocked_with_gold", 0) == 0) {
+                    manuallyUnlockedCount++;
+                }
+            }
+        }
+        return hardClearCount - manuallyUnlockedCount;
+    }
+
+    private void showUnlockOptionsDialog(int stageId) {
+        String subjectName = getSubjectNameById(stageId);
+        int tickets = getAvailableUnlockTickets();
+
+        int currentGold = 0;
+        MainActivity mainActivity = null;
+
+        if (getActivity() instanceof MainActivity) {
+            mainActivity = (MainActivity) getActivity();
+            currentGold = mainActivity.getGold();
+        }
+
+        // 💡 1. AlertDialog 대신 일반 Dialog 사용 및 커스텀 레이아웃 인플레이트
+        final Dialog dialog = new Dialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_unlock_options, null);
+        dialog.setContentView(dialogView);
+
+        // 배경 투명화 (둥근 모서리 커스텀 배경이 제대로 보이게 하기 위함)
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // 💡 2. 뷰 연결
+        TextView tvTitle = dialogView.findViewById(R.id.tvUnlockTitle);
+        TextView tvMessage = dialogView.findViewById(R.id.tvUnlockMessage);
+        TextView tvMyTickets = dialogView.findViewById(R.id.tvMyTickets);
+        TextView tvMyGold = dialogView.findViewById(R.id.tvMyGold);
+        Button btnTicket = dialogView.findViewById(R.id.btnUnlockWithTicket);
+        Button btnGold = dialogView.findViewById(R.id.btnUnlockWithGold);
+        TextView tvCancel = dialogView.findViewById(R.id.tvCancelUnlock);
+
+        // 💡 3. 데이터 셋팅
+        tvTitle.setText("[" + subjectName + "] 과목 해금");
+        tvMyTickets.setText("• 보유 해금권: " + tickets + "개");
+        tvMyGold.setText("• 보유 골드: " + currentGold + " G");
+
+        // 상황별 UI 예외 처리 (해금권이 없으면 버튼 비활성화 또는 숨김)
+        if (tickets <= 0) {
+            btnTicket.setVisibility(View.GONE); // 티켓 없으면 버튼을 아예 숨기거나 비활성화
+            tvMessage.setText("현재 보유한 해금권이 없습니다.\n300 골드를 사용하여 해금할 수 있습니다.");
+        }
+
+        // QuizPlayFragment에 있는 버튼 꾹 누르기 애니메이션이 있다면 여기도 적용 가능
+        if (mainActivity != null) {
+            // applyPressAnimation(btnTicket);
+            // applyPressAnimation(btnGold);
+        }
+
+        // 💡 4. 이벤트 리스너 정의
+        btnTicket.setOnClickListener(v -> {
+            dialog.dismiss();
+            unlockStageWithTicket(stageId, subjectName);
+        });
+
+        final MainActivity finalMainActivity = mainActivity;
+        final int finalCurrentGold = currentGold;
+
+        btnGold.setOnClickListener(v -> {
+            if (finalMainActivity != null) {
+                if (finalCurrentGold >= 300) {
+                    dialog.dismiss();
+                    finalMainActivity.spendGold(300);
+                    int updatedGold = finalCurrentGold - 300;
+                    unlockStageWithGold(stageId, subjectName, updatedGold);
+                } else {
+                    Toast.makeText(getContext(), "골드가 부족합니다. 퀴즈를 풀어 골드를 더 모아보세요!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        tvCancel.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+
+        // 💡 팝업창 크기 및 뒷배경 흐림(Dim) 처리 조정
+        Window shownWindow = dialog.getWindow();
+        if (shownWindow != null) {
+            shownWindow.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.85), // 화면 너비의 85%
+                    ViewGroup.LayoutParams.WRAP_CONTENT
             );
+            shownWindow.setDimAmount(0.55f);
+            shownWindow.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        }
+    }
+
+    /**
+     * 💡  해금권을 사용한 방식을 처리
+     */
+    private void unlockStageWithTicket(int stageId, String subjectName) {
+        boolean success = getQuizPrefs().edit().putInt("stage_" + stageId + "_before_clear", 1).commit();
+
+        if (success) {
+            saveStageUnlockToFirebase(stageId);
+            refreshCards(); // 이제 무조건 해금된 데이터(1)를 읽어 화면을 갱신
+            Toast.makeText(getContext(), "[" + subjectName + "] 과목이 해금권으로 활성화되었습니다!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 💡  3000 골드를 소모한 방식을 처리
+     */
+    private void unlockStageWithGold(int stageId, String subjectName, int newGold) {
+        // 로컬 SharedPreferences에 해금 기록 저장
+        getQuizPrefs().edit().putInt("stage_" + stageId + "_before_clear", 1)
+                .putInt("stage_" + stageId + "_unlocked_with_gold", 1)
+                .commit();
+
+        //  파이어베이스 서버에 해금 상태 및 차감된 골드 데이터를 동시에 업데이트
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+            updates.put("unlocked_stage_" + stageId, true);
+            updates.put("unlocked_with_gold_stage_" + stageId, true);
+            updates.put("gold", newGold);
+
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(uid)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        // 서버 저장이 완료되면 상단바 텍스트 리프레시
+                        if (getActivity() instanceof MainActivity) {
+                            ((MainActivity) getActivity()).updateTopBar();
+                        }
+                    });
+        }
+
+        refreshCards();
+        Toast.makeText(getContext(), "[" + subjectName + "] 과목이 300 골드로 활성화되었습니다!", Toast.LENGTH_SHORT).show();
+    }
+
+    private void saveStageUnlockToFirebase(int stageId) {
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (mAuth.getCurrentUser() == null) return;
+
+        String uid = mAuth.getCurrentUser().getUid();
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .update("unlocked_stage_" + stageId, true);
+    }
+
+    private String getSubjectNameById(int stageId) {
+        switch (stageId) {
+            case 1: return "C언어";
+            case 2: return "객체지향프로그래밍";
+            case 3: return "자료구조";
+            case 4: return "운영체제";
+            case 5: return "알고리즘";
+            case 6: return "컴퓨터네트워크";
+            case 7: return "인공지능개론";
+            case 8: return "데이터과학";
+            default: return "과목 " + stageId;
         }
     }
 
@@ -231,11 +435,21 @@ public class LeftFragment extends Fragment {
                         if (doc.exists() && isAdded()) {
                             SharedPreferences.Editor editor = getQuizPrefs().edit();
 
-                            for (int i = 2; i <= 9; i++) {
+                            //  1~8단계 전체를 확인하며 해금 정보와 상 난이도 클리어 정보 동기화
+                            for (int i = 1; i <= 8; i++) {
                                 Boolean isUnlocked = doc.getBoolean("unlocked_stage_" + i);
-
                                 if (isUnlocked != null && isUnlocked) {
                                     editor.putInt("stage_" + i + "_before_clear", 1);
+                                }
+
+                                Boolean isUnlockedWithGold = doc.getBoolean("unlocked_with_gold_stage_" + i);
+                                if (isUnlockedWithGold != null && isUnlockedWithGold) {
+                                    editor.putInt("stage_" + i + "_unlocked_with_gold", 1);
+                                }
+
+                                Boolean isHardCleared = doc.getBoolean("cleared_hard_stage_" + i);
+                                if (isHardCleared != null && isHardCleared) {
+                                    editor.putInt("subject_" + i + "_hard_clear", 1);
                                 }
                             }
 
