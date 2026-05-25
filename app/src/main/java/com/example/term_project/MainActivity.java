@@ -161,12 +161,30 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // 저장된 유저 닉네임 불러오는 곳도 uid 기반 파일로 변경
-        String currentUid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
-        SharedPreferences prefs = getSharedPreferences("user_" + currentUid, MODE_PRIVATE);
-        String nickname = prefs.getString("name", "기본닉네임");
+        // Firebase에서 현재 uid의 닉네임 불러오기
+        if (mAuth.getCurrentUser() != null) {
+            String currentUid = mAuth.getCurrentUser().getUid();
 
-        // 상단 정보 표시
-        tvPlayerName.setText(nickname);
+            db.collection("users").document(currentUid)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+
+                        String nickname = documentSnapshot.getString("name");
+
+                        if (nickname == null || nickname.isEmpty()) {
+                            nickname = "기본닉네임";
+                        }
+
+                        tvPlayerName.setText(nickname);
+
+                        // 로컬에도 저장
+                        getSharedPreferences("user_" + currentUid, MODE_PRIVATE)
+                                .edit()
+                                .putString("name", nickname)
+                                .apply();
+                    });
+        }
+
         updateTopBar();
 
         // 뒤로가기 처리
