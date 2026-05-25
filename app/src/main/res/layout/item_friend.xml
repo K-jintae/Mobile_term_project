@@ -1,74 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="4dp"
-    android:padding="16dp"
-    android:gravity="center_vertical"
-    android:background="@drawable/bg_item_box"
-    android:elevation="2dp">
+    android:layout_margin="10dp"
+    card_view:cardCornerRadius="16dp"
+    card_view:cardElevation="4dp">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="14dp">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tvItemUserId"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="User_ID"
-                android:textColor="#333333"
-                android:textSize="16sp"
+                android:text="userId"
+                android:textColor="#222222"
+                android:textSize="17sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvItemLevel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="레벨: 중"
+                android:textColor="#555555"
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/tvItemReason"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="추천친구"
-                android:textColor="#FF8A00"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_text_box"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"/>
+                android:layout_marginTop="4dp"
+                android:text="내 친구 · 온라인"
+                android:textColor="#777777"
+                android:textSize="13sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvItemLevel"
+        <Button
+            android:id="@+id/btnBattle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Lv.1"
-            android:textColor="#777777"
-            android:textSize="13sp" />
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:backgroundTint="#F5EBE0"
+            android:text="대전"
+            android:textColor="#222222"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/btnItemAddFriend"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="친구 추가"
+            android:src="@android:drawable/ic_input_add" />
 
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/btnItemAddFriend"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="8dp"
-        android:src="@drawable/ic_add_friend"
-        android:background="@drawable/bg_circle_button"
-        android:backgroundTint="#F5EBE0"
-        android:padding="8dp"
-        android:scaleType="fitCenter"
-        app:tint="#333333"
-        android:contentDescription="친구 추가 버튼"/>
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>
