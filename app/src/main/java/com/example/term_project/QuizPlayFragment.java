@@ -241,12 +241,7 @@ public class QuizPlayFragment extends Fragment {
         enableAllOptions(true);
 
         if (quizFaceImage != null) {
-            Integer currentFaceId = characterViewModel.getFace().getValue();
-            if (currentFaceId != null && currentFaceId != 0) {
-                quizFaceImage.setImageResource(currentFaceId);
-            } else {
-                quizFaceImage.setImageResource(R.drawable.face_default);
-            }
+            quizFaceImage.setImageResource(R.drawable.face_default);
         }
 
         saveContinueQuiz(currentQuestionIndex);
