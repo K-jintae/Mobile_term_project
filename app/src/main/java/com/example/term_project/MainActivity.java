@@ -7,8 +7,10 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 import android.media.MediaPlayer;
+import android.widget.Toast; // 추가: 피드백 메시지용
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull; // 추가: Firebase 리스너용
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
@@ -18,6 +20,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener; // 추가: 실시간 DB 쿼리용
+import com.google.firebase.database.DataSnapshot; // 추가
+import com.google.firebase.database.DatabaseError; // 추가
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,6 +38,10 @@ public class MainActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
+
+    // 추가: Realtime Database 인스턴스 전역 관리
+    private FirebaseDatabase mRealtimeDatabase;
+
     //소리 제어
     private boolean isSoundOn = true;
     // 게임 재화(골드)
@@ -42,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_NEED_QUIZ_RECOVERY = "need_quiz_recovery";
     private static final long TWO_DAYS_MILLIS = 48L * 60L * 60L * 1000L;
 
+    private String currentUid; // 전역 분리: 내 UID를 편리하게 재사용하기 위함
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        mRealtimeDatabase = FirebaseDatabase.getInstance(); // 실시간 DB 초기화
 
         // View 연결
         viewPager = findViewById(R.id.viewPager);
@@ -76,27 +88,26 @@ public class MainActivity extends AppCompatActivity {
 
         // 로그인 유저 설정 불러오기
         if (mAuth.getCurrentUser() != null) {
-            String uid = mAuth.getCurrentUser().getUid();
+            currentUid = mAuth.getCurrentUser().getUid(); // 전역 변수에 UID 할당
 
-            DatabaseReference myStatusRef = FirebaseDatabase.getInstance().getReference("/status/" + uid);
-            DatabaseReference connectedRef = FirebaseDatabase.getInstance().getReference(".info/connected");
+            DatabaseReference myStatusRef = mRealtimeDatabase.getReference("/status/" + currentUid);
+            DatabaseReference connectedRef = mRealtimeDatabase.getReference(".info/connected");
 
-            connectedRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+            connectedRef.addValueEventListener(new ValueEventListener() {
                 @Override
-                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot){
+                public void onDataChange(DataSnapshot snapshot){
                     boolean connected = snapshot.getValue(Boolean.class) != null && snapshot.getValue(Boolean.class);
                     if(connected){
                         myStatusRef.onDisconnect().setValue("offline");
-
                         myStatusRef.setValue("online");
                     }
                 }
 
                 @Override
-                public void onCancelled(com.google.firebase.database.DatabaseError error){}
+                public void onCancelled(DatabaseError error){}
             });
 
-            db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
+            db.collection("users").document(currentUid).get().addOnSuccessListener(doc -> {
                 if (doc.exists()) {
                     // 골드 로드
                     Long g = doc.getLong("gold");
@@ -104,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
                     updateTopBar();
 
                     // 의상 정보 로드
-                    CharacterViewModel viewModel = new androidx.lifecycle.ViewModelProvider(this).get(CharacterViewModel.class);
+                    CharacterViewModel viewModel = new ViewModelProvider(this).get(CharacterViewModel.class);
 
                     // 1. 모자 불러오기
                     String hatName = doc.getString("hat");
@@ -127,20 +138,7 @@ public class MainActivity extends AppCompatActivity {
                         if (interiorResId != 0) viewModel.setInterior(interiorResId);
                     }
 
-                    //서버에 저장된 레벨을 해당 계정 전용 로컬 파일에 동기화
-                    String userLevel = doc.getString("level");
-                    if (userLevel != null) {
-                        getSharedPreferences("user_" + uid, MODE_PRIVATE)
-                                .edit()
-                                .putString("level", userLevel)
-                                .apply();
-                    }
-
-                    // 골드 업데이트가 끝나면 화면을 다시 투명하게
                     updateTopBar();
-
-                    /*viewPager.setAdapter(new ViewPagerAdapter(this));
-                    viewPager.setCurrentItem(1, false);*/
 
                 } else {
                     // 유저 데이터가 없으면 새로 생성
@@ -150,73 +148,44 @@ public class MainActivity extends AppCompatActivity {
                     newUser.put("clothes", "none");
                     newUser.put("background", "none");
                     newUser.put("friends", new java.util.ArrayList<String>());
-
-                    newUser.put("unlocked_stage_2", true);
-                    newUser.put("unlocked_stage_3", true);
-                    newUser.put("unlocked_stage_4", true);
-
-                    db.collection("users").document(uid).set(newUser);
+                    db.collection("users").document(currentUid).set(newUser);
                 }
             });
+
+            DatabaseReference myRef = mRealtimeDatabase.getReference("test_message");
+            myRef.setValue("realtime database 연결 성공!");
         }
 
-        // 저장된 유저 닉네임 불러오는 곳도 uid 기반 파일로 변경
-        // Firebase에서 현재 uid의 닉네임 불러오기
-        if (mAuth.getCurrentUser() != null) {
-            String currentUid = mAuth.getCurrentUser().getUid();
+        // 저장된 유저 닉네임 불러오기
+        SharedPreferences prefs = getSharedPreferences("user", MODE_PRIVATE);
+        String nickname = prefs.getString("name", "기본닉네임");
 
-            db.collection("users").document(currentUid)
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-
-                        String nickname = documentSnapshot.getString("name");
-
-                        if (nickname == null || nickname.isEmpty()) {
-                            nickname = "기본닉네임";
-                        }
-
-                        tvPlayerName.setText(nickname);
-
-                        // 로컬에도 저장
-                        getSharedPreferences("user_" + currentUid, MODE_PRIVATE)
-                                .edit()
-                                .putString("name", nickname)
-                                .apply();
-                    });
-        }
-
+        // 상단 정보 표시
+        tvPlayerName.setText(nickname);
         updateTopBar();
 
         // 뒤로가기 처리
-        // overlay fragment가 열려 있으면 그것부터 닫고,
-        // 없으면 원래 앱 뒤로가기 동작 수행
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-                    @Override
-                    public void handleOnBackPressed() {
-                        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                            getSupportFragmentManager().popBackStack();
+            @Override
+            public void handleOnBackPressed() {
+                if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                    getSupportFragmentManager().popBackStack();
+                    getSupportFragmentManager().executePendingTransactions();
 
-                            // popBackStack 이후 컨테이너를 숨길지 확인
-                            getSupportFragmentManager().executePendingTransactions();
-
-                            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
-                                fragmentContainer.setVisibility(View.GONE);
-                            }
-                        } else {
-                            finish();
-                        }
+                    if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
+                        fragmentContainer.setVisibility(View.GONE);
                     }
+                } else {
+                    finish();
                 }
-
-        );
+            }
+        });
     }
-
 
     public boolean isSoundOn() {
         return isSoundOn;
     }
 
-    //음악 상태 shared preference에 저장
     private void saveSoundSetting(boolean isOn) {
         getSharedPreferences("settings", MODE_PRIVATE)
                 .edit()
@@ -226,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean loadSoundSetting() {
         return getSharedPreferences("settings", MODE_PRIVATE)
-                .getBoolean("sound", true); // 기본값 true
+                .getBoolean("sound", true);
     }
 
     public void setSound(boolean isOn) {
@@ -246,11 +215,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //음악 제어
     @Override
     protected void onPause() {
         super.onPause();
-        // 앱이 백그라운드로 가면 음악 일시정지
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
         }
@@ -259,7 +226,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 앱으로 다시 돌아오면 음악 재시작
         if (mediaPlayer != null && isSoundOn && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
@@ -268,54 +234,39 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 앱 종료 시 자원 해제
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
         }
     }
-    public void updateUserGold(int amount) {
-        // 1. 로컬 변수(내 지갑) 업데이트
-        this.gold += amount;
 
-        // 2. 파이어베이스 서버의 'gold' 필드 업데이트
-        if (mAuth.getCurrentUser() != null) {
-            String uid = mAuth.getCurrentUser().getUid();
-            db.collection("users").document(uid)
-                    .update("gold", FieldValue.increment(amount)) // 💡 기존 골드에 amount만큼 더함
-                    .addOnSuccessListener(aVoid -> {
-                        // 상단바 코인 텍스트가 있다면 여기서 갱신해줍니다.
-                        // tvGold.setText(String.valueOf(this.gold));
-                    });
+    public void updateUserGold(int amount) {
+        this.gold += amount;
+        if (currentUid != null) {
+            db.collection("users").document(currentUid)
+                    .update("gold", FieldValue.increment(amount));
         }
     }
-    // 상단 골드 표시 갱신
+
     public void updateTopBar() {
         tvGold.setText(String.valueOf(gold));
     }
 
-    // 골드 추가 ex)  ((MainActivity) getActivity()).addGold(50);
     public void addGold(int amount) {
         gold += amount;
         updateTopBar();
-        if (mAuth.getCurrentUser() != null) {
-            // 🔥 에러 해결의 핵심: 여기서 uid가 누구인지 정의해 줍니다!
-            String uid = mAuth.getCurrentUser().getUid();
-
-            db.collection("users").document(uid)
+        if (currentUid != null) {
+            db.collection("users").document(currentUid)
                     .update("gold", this.gold)
                     .addOnSuccessListener(aVoid -> {
-                        // 저장 성공 시 남기는 로그 (안 보이게 숨겨진 기록)
                         android.util.Log.d("Firebase", "골드 저장 완료: " + this.gold);
                     })
                     .addOnFailureListener(e -> {
-                        // 저장 실패 시 에러 확인용
                         android.util.Log.e("Firebase", "골드 저장 실패", e);
                     });
         }
     }
 
-    // 골드 사용  ex)  boolean success = ((MainActivity) getActivity()).spendGold(200);
     public boolean spendGold(int amount) {
         if (gold >= amount) {
             gold -= amount;
@@ -325,13 +276,10 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    // 현재 골드 반환
     public int getGold() {
         return gold;
     }
 
-    // ViewPager 위에 새로운 Fragment를 띄우는 함수
-    // 예: QuizSelectFragment, QuizPlayFragment 등
     public void openFragment(Fragment fragment) {
         fragmentContainer.setVisibility(View.VISIBLE);
 
@@ -342,12 +290,9 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
-    // 의상정보 저장
     public void updateEquippedItem(String category, String itemName) {
-        if (mAuth.getCurrentUser() != null) {
-            String uid = mAuth.getCurrentUser().getUid();
-
-            db.collection("users").document(uid)
+        if (currentUid != null) {
+            db.collection("users").document(currentUid)
                     .update(category, itemName)
                     .addOnSuccessListener(aVoid -> {
                         android.util.Log.d("Firebase", category + " 저장 완료: " + itemName);
@@ -357,11 +302,10 @@ public class MainActivity extends AppCompatActivity {
                     });
         }
     }
-    // 현재 overlay fragment를 닫는 함수
+
     public void closeCurrentFragment() {
         if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
             getSupportFragmentManager().popBackStack();
-
             getSupportFragmentManager().executePendingTransactions();
 
             if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
@@ -371,15 +315,12 @@ public class MainActivity extends AppCompatActivity {
             fragmentContainer.setVisibility(View.GONE);
         }
     }
+
     private SharedPreferences getCurrentUserStatePrefs() {
-        String uid = "guest";
-
-        if (mAuth != null && mAuth.getCurrentUser() != null) {
-            uid = mAuth.getCurrentUser().getUid();
-        }
-
+        String uid = (currentUid != null) ? currentUid : "guest";
         return getSharedPreferences(PREF_USER_STATE_PREFIX + uid, MODE_PRIVATE);
     }
+
     private void checkLongAbsenceState() {
         SharedPreferences prefs = getCurrentUserStatePrefs();
 
@@ -387,10 +328,8 @@ public class MainActivity extends AppCompatActivity {
         long lastLoginTime = prefs.getLong(KEY_LAST_LOGIN_TIME, -1L);
         boolean needRecovery = prefs.getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
 
-        CharacterViewModel viewModel =
-                new ViewModelProvider(this).get(CharacterViewModel.class);
+        CharacterViewModel viewModel = new ViewModelProvider(this).get(CharacterViewModel.class);
 
-        // 이 계정으로 처음 접속하는 경우: 절대 울음 상태로 만들지 않음
         if (lastLoginTime == -1L) {
             prefs.edit()
                     .putLong(KEY_LAST_LOGIN_TIME, now)
@@ -401,13 +340,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 기존 유저가 48시간 이상 접속하지 않은 경우에만 울음 상태 적용
         if (now - lastLoginTime >= TWO_DAYS_MILLIS) {
             needRecovery = true;
-
-            prefs.edit()
-                    .putBoolean(KEY_NEED_QUIZ_RECOVERY, true)
-                    .apply();
+            prefs.edit().putBoolean(KEY_NEED_QUIZ_RECOVERY, true).apply();
         }
 
         if (needRecovery) {
@@ -416,14 +351,11 @@ public class MainActivity extends AppCompatActivity {
             viewModel.setFace(R.drawable.face_default);
         }
 
-        prefs.edit()
-                .putLong(KEY_LAST_LOGIN_TIME, now)
-                .apply();
+        prefs.edit().putLong(KEY_LAST_LOGIN_TIME, now).apply();
     }
 
     public boolean isNeedQuizRecovery() {
-        return getCurrentUserStatePrefs()
-                .getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
+        return getCurrentUserStatePrefs().getBoolean(KEY_NEED_QUIZ_RECOVERY, false);
     }
 
     public void clearLongAbsenceStateAfterQuiz() {
@@ -433,10 +365,54 @@ public class MainActivity extends AppCompatActivity {
                 .putLong(KEY_LAST_LOGIN_TIME, System.currentTimeMillis())
                 .apply();
 
-        CharacterViewModel viewModel =
-                new ViewModelProvider(this).get(CharacterViewModel.class);
-
+        CharacterViewModel viewModel = new ViewModelProvider(this).get(CharacterViewModel.class);
         viewModel.setFace(R.drawable.face_default);
     }
-}
 
+    /*
+     *  [추가된 기능] 쌍방 친구 상태 실시간 검증 로직
+     * 특정 유저(targetUid)와 멀티 플레이, 공유 메모장 조회 등 핵심 기능을 수행하기 전 호출하는 방어 코드입니다.
+     */
+    public void checkFriendshipAndProceed(String targetUid) {
+        if (currentUid == null) {
+            Toast.makeText(this, "로그인이 필요한 서비스입니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // FriendActivity에서 구현한 대칭형 패스 구조에 맞춰 Realtime Database 노드를 조회합니다.
+        mRealtimeDatabase.getReference()
+                .child("users").child(currentUid).child("friends").child(targetUid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            // FriendItem 모델 내부에 구현한 'status' 문자열값을 파싱합니다.
+                            String status = snapshot.child("status").getValue(String.class);
+
+                            if ("confirmed".equals(status)) {
+                                // 쌍방 수락 상태가 확실히 확인 완료되었을 때만 핵심 연동 기능 진입!
+                                openSharedFeature();
+                            } else if ("pending_sent".equals(status)) {
+                                Toast.makeText(MainActivity.this, "상대방이 아직 친구 요청을 수락하지 않았습니다.", Toast.LENGTH_SHORT).show();
+                            } else if ("pending_received".equals(status)) {
+                                Toast.makeText(MainActivity.this, "받은 친구 요청 수락을 먼저 진행해 주세요.", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(MainActivity.this, "친구 관계가 아닙니다.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(MainActivity.this, "네트워크 오류가 발생했습니다. 다시 시도해 주세요.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    /*
+     * [추가된 기능] 검증 통과 시 실행될 타겟 기능 진입점
+     */
+    private void openSharedFeature() {
+        Toast.makeText(this, "쌍방 친구 인증 성공! 공유 기능을 시작합니다.", Toast.LENGTH_SHORT).show();
+    }
+}

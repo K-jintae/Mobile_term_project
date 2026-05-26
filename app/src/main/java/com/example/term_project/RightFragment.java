@@ -11,8 +11,6 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,13 +18,9 @@ import androidx.appcompat.widget.AppCompatButton;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import android.widget.TextView;
 
 public class RightFragment extends Fragment {
 
@@ -45,21 +39,10 @@ public class RightFragment extends Fragment {
     private View confirmDimView;
     private LinearLayout changeConfirmPopup;
     private AppCompatButton btnConfirmYes, btnConfirmNo;
-
-    // 펜딩 상태 관리 변수들
     private boolean pendingIsRemove = false;
     private String pendingRemoveType = "";
     private int pendingResId = 0;
     private boolean pendingIsInterior = false;
-
-    // 구매 처리를 위한 펜딩 변수
-    private boolean pendingIsPurchase = false;
-    private String pendingItemName = "";
-
-    // Firebase 및 재화 데이터 리스트
-    private List<String> unlockedItems = new ArrayList<>();
-    private FirebaseFirestore db;
-    private String uid;
 
     private static final int TAB_ALL = 0;
     private static final int TAB_HAT = 1;
@@ -67,7 +50,6 @@ public class RightFragment extends Fragment {
     private static final int TAB_INTERIOR = 3;
 
     private int currentTab = TAB_ALL;
-    private static final int ITEM_PRICE = 10; // 모든 아이템 가격 10골드 통일
 
     private final List<DressItem> hatList = Arrays.asList(
             new DressItem(R.drawable.thumb_hat_halloween, R.drawable.hat_halloween),
@@ -96,6 +78,7 @@ public class RightFragment extends Fragment {
             new DressItem(R.drawable.thumb_clothes_gojo, R.drawable.clothes_gojo),
             new DressItem(R.drawable.thumb_clothes_brucelee, R.drawable.clothes_brucelee),
             new DressItem(R.drawable.thumb_clothes_astronaut, R.drawable.clothes_astronaut)
+
     );
 
     private final List<Integer> interiorList = Arrays.asList(
@@ -111,12 +94,6 @@ public class RightFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_right, container, false);
         viewModel = new ViewModelProvider(requireActivity()).get(CharacterViewModel.class);
-
-        // Firebase 초기화
-        db = FirebaseFirestore.getInstance();
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        }
 
         imageGrid = view.findViewById(R.id.image_grid);
         bgPreview = view.findViewById(R.id.bg_preview);
@@ -137,6 +114,7 @@ public class RightFragment extends Fragment {
         tabTopBox = view.findViewById(R.id.tab_top_box);
         tabInteriorBox = view.findViewById(R.id.tab_interior_box);
 
+        // 확인 팝업 연결
         confirmDimView = view.findViewById(R.id.confirmDimView);
         changeConfirmPopup = view.findViewById(R.id.changeConfirmPopup);
         btnConfirmYes = view.findViewById(R.id.btnConfirmYes);
@@ -152,13 +130,7 @@ public class RightFragment extends Fragment {
             if (event.getAction() == DragEvent.ACTION_DROP) {
                 ClipData.Item item = event.getClipData().getItemAt(0);
                 int resId = Integer.parseInt(item.getText().toString());
-                String itemName = getResources().getResourceEntryName(resId);
-
-                if (isItemUnlocked(itemName)) {
-                    updateCharacter(resId);
-                } else {
-                    Toast.makeText(requireContext(), "아직 구매하지 않은 아이템입니다.", Toast.LENGTH_SHORT).show();
-                }
+                updateCharacter(resId);
             }
             return true;
         });
@@ -196,9 +168,7 @@ public class RightFragment extends Fragment {
 
         btnConfirmYes.setOnClickListener(v -> {
             hideChangeConfirmPopup(() -> {
-                if (pendingIsPurchase) {
-                    executePurchaseItem(pendingItemName, pendingResId, pendingIsInterior);
-                } else if (pendingIsRemove) {
+                if (pendingIsRemove) {
                     removeEquippedItem(pendingRemoveType);
                 } else {
                     if (pendingIsInterior) {
@@ -209,29 +179,37 @@ public class RightFragment extends Fragment {
                         updateCharacter(pendingResId);
                     }
                 }
-                resetPendingStates();
+
+                pendingIsRemove = false;
+                pendingRemoveType = "";
             });
         });
 
-        btnConfirmNo.setOnClickListener(v -> {
-            hideChangeConfirmPopup(null);
-            resetPendingStates();
-        });
+        btnConfirmNo.setOnClickListener(v -> hideChangeConfirmPopup(null));
 
         viewModel.getFace().observe(getViewLifecycleOwner(), resId -> {
-            if (resId != 0) faceImage.setImageResource(resId);
-            else faceImage.setImageDrawable(null);
+            if (resId != 0) {
+                faceImage.setImageResource(resId);
+            } else {
+                faceImage.setImageDrawable(null);
+            }
         });
 
         viewModel.getHat().observe(getViewLifecycleOwner(), resId -> {
-            if (resId != 0) hatImage.setImageResource(resId);
-            else hatImage.setImageDrawable(null);
+            if (resId != 0) {
+                hatImage.setImageResource(resId);
+            } else {
+                hatImage.setImageDrawable(null);
+            }
             refreshCurrentTab();
         });
 
         viewModel.getClothes().observe(getViewLifecycleOwner(), resId -> {
-            if (resId != 0) clothesImage.setImageResource(resId);
-            else clothesImage.setImageDrawable(null);
+            if (resId != 0) {
+                clothesImage.setImageResource(resId);
+            } else {
+                clothesImage.setImageDrawable(null);
+            }
             refreshCurrentTab();
         });
 
@@ -241,104 +219,48 @@ public class RightFragment extends Fragment {
         });
 
         updateTabButtons();
-
-        // Firestore 데이터 리스너 연결
-        loadUserDataFromFirebase();
+        showAllItems();
 
         return view;
-    }
-
-    private void resetPendingStates() {
-        pendingIsRemove = false;
-        pendingRemoveType = "";
-        pendingIsPurchase = false;
-        pendingItemName = "";
-        pendingResId = 0;
-        pendingIsInterior = false;
-    }
-
-    // Firestore에서 해금된 아이템 목록 가져오기 (실시간 감시)
-    private void loadUserDataFromFirebase() {
-        if (uid == null) {
-            showAllItems();
-            return;
-        }
-
-        db.collection("users").document(uid)
-                .addSnapshotListener((snapshot, e) -> {
-                    if (e != null || snapshot == null || !snapshot.exists()) {
-                        showAllItems();
-                        return;
-                    }
-
-                    // 해금 아이템 리스트 실시간 동기화
-                    List<String> list = (List<String>) snapshot.get("unlocked_items");
-                    unlockedItems = (list != null) ? list : new ArrayList<>();
-
-                    refreshCurrentTab();
-                });
-    }
-
-    private boolean isItemUnlocked(String itemName) {
-        // 기본 배경은 처음부터 사용할 수 있게 예외처리
-        if ("background_hill".equals(itemName)) return true;
-        return unlockedItems.contains(itemName);
-    }
-
-    // MainActivity의 spendGold 로직과 연동하여 구매 실행
-    private void executePurchaseItem(String itemName, int resId, boolean isInterior) {
-        MainActivity mainActivity = (MainActivity) getActivity();
-        if (mainActivity == null || uid == null) return;
-
-        // 1. 차감 가능한지 MainActivity 지갑 검사 및 차감 진행
-        if (mainActivity.spendGold(ITEM_PRICE)) {
-
-            // 2. 차감 성공했다면 서버 지갑 동기화 및 해금 리스트에 추가
-            db.collection("users").document(uid)
-                    .update(
-                            "gold", mainActivity.getGold(), // MainActivity에서 차감되고 남은 돈 반영
-                            "unlocked_items", FieldValue.arrayUnion(itemName)
-                    )
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(requireContext(), "구매가 완료되었습니다!", Toast.LENGTH_SHORT).show();
-                        // 구매 완료 후 바로 장착 확인 팝업 오픈
-                        showChangeConfirmPopup(resId, isInterior);
-                    })
-                    .addOnFailureListener(e -> {
-                        // 서버 실패 시 돈 복구 복구
-                        mainActivity.addGold(ITEM_PRICE);
-                        Toast.makeText(requireContext(), "서버 통신 실패로 구매가 취소되었습니다.", Toast.LENGTH_SHORT).show();
-                    });
-        } else {
-            Toast.makeText(requireContext(), "재화가 부족하여 구매할 수 없습니다.", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void showAllItems() {
         if (imageGrid == null) return;
         imageGrid.removeAllViews();
-        for (DressItem item : hatList) addDressTile(item);
-        for (DressItem item : clothesList) addDressTile(item);
-        for (int resId : interiorList) addInteriorTile(resId);
+
+        for (DressItem item : hatList) {
+            addDressTile(item);
+        }
+
+        for (DressItem item : clothesList) {
+            addDressTile(item);
+        }
+
+        for (int resId : interiorList) {
+            addInteriorTile(resId);
+        }
     }
 
     private void showDressItems(List<DressItem> itemList) {
         if (imageGrid == null) return;
         imageGrid.removeAllViews();
-        for (DressItem item : itemList) addDressTile(item);
+
+        for (DressItem item : itemList) {
+            addDressTile(item);
+        }
     }
 
     private void showInteriorItems(List<Integer> imageList) {
         if (imageGrid == null) return;
         imageGrid.removeAllViews();
-        for (int resId : imageList) addInteriorTile(resId);
+
+        for (int resId : imageList) {
+            addInteriorTile(resId);
+        }
     }
 
     private void addDressTile(DressItem item) {
-        String itemName = getResources().getResourceEntryName(item.getApplyResId());
-        boolean isUnlocked = isItemUnlocked(itemName);
         boolean selected = isDressSelected(item.getApplyResId());
-
         FrameLayout tile = createTile(selected);
 
         ImageView imageView = new ImageView(requireContext());
@@ -346,63 +268,40 @@ public class RightFragment extends Fragment {
         imageView.setTag(item.getApplyResId());
         imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
-        if (!isUnlocked) {
-            imageView.setAlpha(0.4f); // 잠금 아이템 불투명도 조절
-        }
-
         FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
         imageView.setLayoutParams(imageParams);
-        tile.addView(imageView);
-
-        // 자물쇠(lock.png) 오버레이 추가
-        if (!isUnlocked) {
-            ImageView lockView = new ImageView(requireContext());
-            lockView.setImageResource(R.drawable.lock);
-            int lockSize = dpToPx(20);
-            FrameLayout.LayoutParams lockParams = new FrameLayout.LayoutParams(lockSize, lockSize);
-            lockParams.setMargins(dpToPx(4), dpToPx(4), 0, 0);
-            lockView.setLayoutParams(lockParams);
-            tile.addView(lockView);
-        }
 
         imageView.setOnClickListener(v -> {
             int resId = (int) v.getTag();
             animateTileSelect(tile);
 
-            if (!isUnlocked) {
-                showPurchaseConfirmPopup(itemName, resId, false);
-            } else {
-                if (isDressSelected(resId)) {
-                    if (containsApplyResId(hatList, resId)) {
-                        showRemoveConfirmPopup(resId, "hat");
-                    } else if (containsApplyResId(clothesList, resId)) {
-                        showRemoveConfirmPopup(resId, "clothes");
-                    }
-                } else {
-                    showChangeConfirmPopup(resId, false);
+            if (isDressSelected(resId)) {
+                if (containsApplyResId(hatList, resId)) {
+                    showRemoveConfirmPopup(resId, "hat");
+                } else if (containsApplyResId(clothesList, resId)) {
+                    showRemoveConfirmPopup(resId, "clothes");
                 }
+            } else {
+                showChangeConfirmPopup(resId, false);
             }
         });
 
         imageView.setOnLongClickListener(v -> {
-            if (!isUnlocked) return false;
             ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
             View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
             v.startDragAndDrop(data, shadowBuilder, null, 0);
             return true;
         });
 
+        tile.addView(imageView);
         imageGrid.addView(tile);
     }
 
     private void addInteriorTile(int resId) {
-        String itemName = getResources().getResourceEntryName(resId);
-        boolean isUnlocked = isItemUnlocked(itemName);
         boolean selected = isInteriorSelected(resId);
-
         FrameLayout tile = createTile(selected);
 
         ImageView imageView = new ImageView(requireContext());
@@ -410,50 +309,31 @@ public class RightFragment extends Fragment {
         imageView.setTag(resId);
         imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
-        if (!isUnlocked) {
-            imageView.setAlpha(0.4f);
-        }
-
         FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
         imageView.setLayoutParams(imageParams);
-        tile.addView(imageView);
-
-        if (!isUnlocked) {
-            ImageView lockView = new ImageView(requireContext());
-            lockView.setImageResource(R.drawable.lock);
-            int lockSize = dpToPx(20);
-            FrameLayout.LayoutParams lockParams = new FrameLayout.LayoutParams(lockSize, lockSize);
-            lockParams.setMargins(dpToPx(4), dpToPx(4), 0, 0);
-            lockView.setLayoutParams(lockParams);
-            tile.addView(lockView);
-        }
 
         imageView.setOnClickListener(v -> {
             int interiorResId = (int) v.getTag();
             animateTileSelect(tile);
 
-            if (!isUnlocked) {
-                showPurchaseConfirmPopup(itemName, interiorResId, true);
+            if (isInteriorSelected(interiorResId)) {
+                showRemoveConfirmPopup(interiorResId, "interior");
             } else {
-                if (isInteriorSelected(interiorResId)) {
-                    showRemoveConfirmPopup(interiorResId, "interior");
-                } else {
-                    showChangeConfirmPopup(interiorResId, true);
-                }
+                showChangeConfirmPopup(interiorResId, true);
             }
         });
 
         imageView.setOnLongClickListener(v -> {
-            if (!isUnlocked) return false;
             ClipData data = ClipData.newPlainText("resId", v.getTag().toString());
             View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
             v.startDragAndDrop(data, shadowBuilder, null, 0);
             return true;
         });
 
+        tile.addView(imageView);
         imageGrid.addView(tile);
     }
 
@@ -482,6 +362,7 @@ public class RightFragment extends Fragment {
     private boolean isDressSelected(int applyResId) {
         Integer currentHat = viewModel.getHat().getValue();
         Integer currentClothes = viewModel.getClothes().getValue();
+
         return (currentHat != null && currentHat == applyResId)
                 || (currentClothes != null && currentClothes == applyResId);
     }
@@ -493,58 +374,87 @@ public class RightFragment extends Fragment {
 
     private void updateCharacter(int resId) {
         String itemName = getResources().getResourceEntryName(resId);
+
         if (containsApplyResId(hatList, resId)) {
             viewModel.setHat(resId);
-            ((MainActivity) getActivity()).updateEquippedItem("hat", itemName);
+            ((MainActivity) getActivity()).updateEquippedItem("hat", itemName); // 파이어베이스 저장
+
         } else if (containsApplyResId(clothesList, resId)) {
             viewModel.setClothes(resId);
-            ((MainActivity) getActivity()).updateEquippedItem("clothes", itemName);
+            ((MainActivity) getActivity()).updateEquippedItem("clothes", itemName); // 파이어베이스 저장
+
         } else if (interiorList.contains(resId)) {
             viewModel.setInterior(resId);
-            ((MainActivity) getActivity()).updateEquippedItem("interior", itemName);
+            ((MainActivity) getActivity()).updateEquippedItem("interior", itemName); // 파이어베이스 저장
         }
     }
 
     private void removeEquippedItem(String removeType) {
         MainActivity mainActivity = (MainActivity) getActivity();
+
         if ("hat".equals(removeType)) {
             viewModel.setHat(0);
-            if (mainActivity != null) mainActivity.updateEquippedItem("hat", "");
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("hat", "");
+            }
+
         } else if ("clothes".equals(removeType)) {
             viewModel.setClothes(0);
-            if (mainActivity != null) mainActivity.updateEquippedItem("clothes", "");
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("clothes", "");
+            }
+
         } else if ("interior".equals(removeType)) {
             viewModel.setInterior(R.drawable.background_hill);
-            if (mainActivity != null) mainActivity.updateEquippedItem("interior", "background_hill");
+
+            if (mainActivity != null) {
+                mainActivity.updateEquippedItem("interior", "background_hill");
+            }
         }
+
         refreshCurrentTab();
     }
 
     private boolean containsApplyResId(List<DressItem> itemList, int resId) {
         for (DressItem item : itemList) {
-            if (item.getApplyResId() == resId) return true;
+            if (item.getApplyResId() == resId) {
+                return true;
+            }
         }
         return false;
     }
 
     private void resetCharacter() {
         viewModel.reset();
+
+        // 초기화 후, 서버에도 의상정보 리셋
         MainActivity mainActivity = (MainActivity) getActivity();
         if (mainActivity != null) {
             mainActivity.updateEquippedItem("hat", "");
             mainActivity.updateEquippedItem("clothes", "");
-            mainActivity.updateEquippedItem("interior", "background_hill");
+            mainActivity.updateEquippedItem("interior", "background_hill"); // 기본 배경
         }
     }
 
     private void refreshCurrentTab() {
         if (imageGrid == null) return;
+
         switch (currentTab) {
-            case TAB_HAT: showDressItems(hatList); break;
-            case TAB_TOP: showDressItems(clothesList); break;
-            case TAB_INTERIOR: showInteriorItems(interiorList); break;
+            case TAB_HAT:
+                showDressItems(hatList);
+                break;
+            case TAB_TOP:
+                showDressItems(clothesList);
+                break;
+            case TAB_INTERIOR:
+                showInteriorItems(interiorList);
+                break;
             case TAB_ALL:
-            default: showAllItems(); break;
+            default:
+                showAllItems();
+                break;
         }
     }
 
@@ -556,13 +466,35 @@ public class RightFragment extends Fragment {
     }
 
     private void styleTab(FrameLayout box, boolean selected) {
-        box.setBackgroundResource(selected ? R.drawable.bg_message_box_selected : R.drawable.bg_message_box);
-        box.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(120).start();
+        if (selected) {
+            box.setBackgroundResource(R.drawable.bg_message_box_selected);
+            box.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(120)
+                    .start();
+        } else {
+            box.setBackgroundResource(R.drawable.bg_message_box);
+            box.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(120)
+                    .start();
+        }
     }
 
     private void animateTileSelect(View tile) {
-        tile.animate().scaleX(1.06f).scaleY(1.06f).setDuration(90)
-                .withEndAction(() -> tile.animate().scaleX(1f).scaleY(1f).setDuration(90).start())
+        tile.animate()
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(90)
+                .withEndAction(() -> tile.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(90)
+                        .start())
                 .start();
     }
 
@@ -570,11 +502,19 @@ public class RightFragment extends Fragment {
         view.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80).start();
+                    v.animate()
+                            .scaleX(0.96f)
+                            .scaleY(0.96f)
+                            .setDuration(80)
+                            .start();
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(80).start();
+                    v.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(80)
+                            .start();
                     break;
             }
             return false;
@@ -586,56 +526,23 @@ public class RightFragment extends Fragment {
         return Math.round(dp * density);
     }
 
-    private void showPurchaseConfirmPopup(String itemName, int resId, boolean isInterior) {
-        resetPendingStates();
-        MainActivity mainActivity = (MainActivity) getActivity();
-        int currentGold = (mainActivity != null) ? mainActivity.getGold() : 0;
-
-        pendingIsPurchase = true;
-        pendingItemName = itemName;
-        pendingResId = resId;
-        pendingIsInterior = isInterior;
-
-        TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
-        if (tvConfirmMessage != null) {
-            if (currentGold < ITEM_PRICE) {
-                tvConfirmMessage.setText("재화가 부족하여\n구매할 수 없습니다.\n(보유: " + currentGold + "G)");
-            } else {
-                tvConfirmMessage.setText(ITEM_PRICE + " Gold를 사용하여\n구매하시겠습니까?\n(보유: " + currentGold + "G)");
-            }
-        }
-        openPopupAnimation();
-    }
-
     private void showChangeConfirmPopup(int resId, boolean isInterior) {
-        resetPendingStates();
         pendingResId = resId;
         pendingIsInterior = isInterior;
+        pendingIsRemove = false;
+        pendingRemoveType = "";
 
         TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
         if (tvConfirmMessage != null) {
             tvConfirmMessage.setText("변경할까요?");
         }
-        openPopupAnimation();
-    }
 
-    private void showRemoveConfirmPopup(int resId, String removeType) {
-        resetPendingStates();
-        pendingResId = resId;
-        pendingIsRemove = true;
-        pendingRemoveType = removeType;
-
-        TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
-        if (tvConfirmMessage != null) {
-            tvConfirmMessage.setText("현재 아이템을\n제거할까요?");
-        }
-        openPopupAnimation();
-    }
-
-    private void openPopupAnimation() {
         confirmDimView.setAlpha(0f);
         confirmDimView.setVisibility(View.VISIBLE);
-        confirmDimView.animate().alpha(1f).setDuration(180).start();
+        confirmDimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
 
         changeConfirmPopup.setVisibility(View.VISIBLE);
         changeConfirmPopup.setAlpha(0f);
@@ -644,18 +551,63 @@ public class RightFragment extends Fragment {
         changeConfirmPopup.setTranslationY(20f);
 
         changeConfirmPopup.animate()
-                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
-                .setDuration(220).start();
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
+    }
+
+    private void showRemoveConfirmPopup(int resId, String removeType) {
+        pendingResId = resId;
+        pendingIsInterior = false;
+        pendingIsRemove = true;
+        pendingRemoveType = removeType;
+
+        TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
+        if (tvConfirmMessage != null) {
+            tvConfirmMessage.setText("현재 아이템을\n제거할까요?");
+        }
+
+        confirmDimView.setAlpha(0f);
+        confirmDimView.setVisibility(View.VISIBLE);
+        confirmDimView.animate()
+                .alpha(1f)
+                .setDuration(180)
+                .start();
+
+        changeConfirmPopup.setVisibility(View.VISIBLE);
+        changeConfirmPopup.setAlpha(0f);
+        changeConfirmPopup.setScaleX(0.88f);
+        changeConfirmPopup.setScaleY(0.88f);
+        changeConfirmPopup.setTranslationY(20f);
+
+        changeConfirmPopup.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .start();
     }
 
     private void hideChangeConfirmPopup(Runnable endAction) {
-        confirmDimView.animate().alpha(0f).setDuration(160)
+        confirmDimView.animate()
+                .alpha(0f)
+                .setDuration(160)
                 .withEndAction(() -> {
                     confirmDimView.setVisibility(View.GONE);
                     confirmDimView.setAlpha(1f);
-                }).start();
+                })
+                .start();
 
-        changeConfirmPopup.animate().alpha(0f).scaleX(0.9f).scaleY(0.9f).translationY(16f).setDuration(180)
+        changeConfirmPopup.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(16f)
+                .setDuration(180)
                 .withEndAction(() -> {
                     changeConfirmPopup.setVisibility(View.GONE);
                     changeConfirmPopup.setAlpha(1f);
@@ -666,6 +618,7 @@ public class RightFragment extends Fragment {
                     if (endAction != null) {
                         endAction.run();
                     }
-                }).start();
+                })
+                .start();
     }
 }

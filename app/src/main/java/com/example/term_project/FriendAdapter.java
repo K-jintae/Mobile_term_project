@@ -1,86 +1,96 @@
 package com.example.term_project;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
+import android.widget.Button;
+import android.widget.ImageButton; //추가 확인
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.SetOptions;
-
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
 
-    private final List<FriendItem> friendList;
+    private List<FriendItem> friendList;
+    private OnFriendActionListener actionListener;
 
-    public FriendAdapter(List<FriendItem> list) {
-        this.friendList = list;
+    public interface OnFriendActionListener {
+        void onAccept(FriendItem item);
+        void onReject(FriendItem item);
+        void onAddFriendRequested(FriendItem item);
+    }
+
+    public FriendAdapter(List<FriendItem> friendList, OnFriendActionListener actionListener) {
+        this.friendList = friendList;
+        this.actionListener = actionListener;
     }
 
     @NonNull
     @Override
     public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_friend, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
         return new FriendViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
+        holder.textName.setText(item.getName());
 
-        // 이름, 레벨 표시 로직
-        holder.tvItemUserId.setText(item.getName());
-        holder.tvItemLevel.setText("레벨: " + item.getLevel());
-        holder.tvItemReason.setText(item.getReason());
+        String levelPrefix = (item.getLevel() != null && !item.getLevel().isEmpty()) ? "[난이도: " + item.getLevel() + "] " : "";
 
-        // 이미 친구면 추가 버튼 숨기기
-        holder.btnItemAddFriend.setVisibility(
-                item.isAlreadyFriend() ? View.GONE : View.VISIBLE
-        );
+        holder.layoutButtons.setVisibility(View.GONE);
+        holder.btnAddFriend.setVisibility(View.GONE);
 
-        holder.btnItemAddFriend.setOnClickListener(v -> {
+        String status = item.getStatus() != null ? item.getStatus() : "";
 
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-            FirebaseAuth auth = FirebaseAuth.getInstance();
+        switch (status) {
+            case "pending_received":
+                holder.textStatus.setText(levelPrefix + "친구 요청을 보냈습니다.");
+                holder.layoutButtons.setVisibility(View.VISIBLE);
+                holder.textStatus.setTextColor(Color.parseColor("#4CAF50"));
+                break;
 
-            if (auth.getCurrentUser() == null) return;
-            String myUid = auth.getCurrentUser().getUid();
+            case "pending_sent":
+                holder.textStatus.setText(levelPrefix + "수락 대기 중...");
+                holder.textStatus.setTextColor(Color.parseColor("#2196F3"));
+                break;
 
+            case "confirmed":
+                String reasonStr = (item.getReason() != null) ? " " + item.getReason() : "서로 친구 상태입니다 ✓";
+                holder.textStatus.setText(levelPrefix + reasonStr);
 
-            String friendUid = item.getUid();
+                if (reasonStr.contains("● 접속중")) {
+                    holder.textStatus.setTextColor(Color.parseColor("#4CAF50"));
+                } else {
+                    holder.textStatus.setTextColor(Color.parseColor("#888888"));
+                }
+                break;
 
-            if (friendUid.equals(myUid)) {
-                Toast.makeText(v.getContext(), "자기 자신은 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            case "pending_none":
+            case "":
+            default:
+                String recReason = (item.getReason() != null) ? item.getReason() : "추천친구";
+                holder.textStatus.setText(levelPrefix + recReason);
+                holder.textStatus.setTextColor(Color.parseColor("#FF8A00"));
 
-            Map<String, Object> friendData = new HashMap<>();
-            friendData.put(friendUid, true);
+                holder.btnAddFriend.setVisibility(View.VISIBLE); // ImageButton 정상 작동
+                break;
+        }
 
-            db.collection("Friends").document(myUid)
-                    .set(friendData, SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(v.getContext(), item.getName() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
+        holder.btnAccept.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onAccept(item);
+        });
 
-                        int pos = holder.getAdapterPosition();
-                        if (pos != RecyclerView.NO_POSITION) {
-                            friendList.remove(pos);
-                            notifyItemRemoved(pos);
-                        }
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(v.getContext(), "친구 추가 실패", Toast.LENGTH_SHORT).show()
-                    );
+        holder.btnReject.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onReject(item);
+        });
+
+        holder.btnAddFriend.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onAddFriendRequested(item);
         });
     }
 
@@ -89,16 +99,20 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         return friendList.size();
     }
 
-    static class FriendViewHolder extends RecyclerView.ViewHolder {
-        TextView tvItemUserId, tvItemLevel, tvItemReason;
-        ImageButton btnItemAddFriend;
+    public static class FriendViewHolder extends RecyclerView.ViewHolder {
+        TextView textName, textStatus;
+        LinearLayout layoutButtons;
+        Button btnAccept, btnReject;
+        ImageButton btnAddFriend; //Button에서 ImageButton으로 형변환 수정 완료!
 
         public FriendViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvItemUserId = itemView.findViewById(R.id.tvItemUserId);
-            tvItemLevel = itemView.findViewById(R.id.tvItemLevel);
-            tvItemReason = itemView.findViewById(R.id.tvItemReason);
-            btnItemAddFriend = itemView.findViewById(R.id.btnItemAddFriend);
+            textName = itemView.findViewById(R.id.text_friend_name);
+            textStatus = itemView.findViewById(R.id.text_friend_status);
+            layoutButtons = itemView.findViewById(R.id.layout_action_buttons);
+            btnAccept = itemView.findViewById(R.id.btn_accept);
+            btnReject = itemView.findViewById(R.id.btn_reject);
+            btnAddFriend = itemView.findViewById(R.id.btn_add_friend);
         }
     }
 }
