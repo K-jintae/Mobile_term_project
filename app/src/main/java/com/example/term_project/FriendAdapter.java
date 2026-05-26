@@ -3,27 +3,28 @@ package com.example.term_project;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
+import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.SetOptions;
-
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
 
-    private final List<FriendItem> friendList;
+    public interface OnFriendActionListener {
+        void onAccept(FriendItem item);
+        void onReject(FriendItem item);
+        void onAddFriendRequested(FriendItem item);
+    }
 
-    public FriendAdapter(List<FriendItem> list) {
-        this.friendList = list;
+    private final List<FriendItem> friendList;
+    private final OnFriendActionListener listener;
+
+    public FriendAdapter(List<FriendItem> friendList, OnFriendActionListener listener) {
+        this.friendList = friendList;
+        this.listener = listener;
     }
 
     @NonNull
@@ -38,50 +39,51 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
 
-        // 이름, 레벨 표시 로직
-        holder.tvItemUserId.setText(item.getName());
-        holder.tvItemLevel.setText("레벨: " + item.getLevel());
-        holder.tvItemReason.setText(item.getReason());
+        holder.textFriendName.setText(item.getName() != null ? item.getName() : "이름 없음");
 
-        // 이미 친구면 추가 버튼 숨기기
-        holder.btnItemAddFriend.setVisibility(
-                item.isAlreadyFriend() ? View.GONE : View.VISIBLE
-        );
+        String levelText = item.getLevel() != null ? item.getLevel() : "없음";
+        String reasonText = item.getReason() != null ? item.getReason() : "";
+        holder.textFriendStatus.setText("레벨: " + levelText + "  " + reasonText);
 
-        holder.btnItemAddFriend.setOnClickListener(v -> {
+        holder.btnAccept.setVisibility(View.GONE);
+        holder.btnReject.setVisibility(View.GONE);
+        holder.btnAddFriend.setVisibility(View.GONE);
 
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-            FirebaseAuth auth = FirebaseAuth.getInstance();
+        String status = item.getStatus();
 
-            if (auth.getCurrentUser() == null) return;
-            String myUid = auth.getCurrentUser().getUid();
+        if ("pending_received".equals(status)) {
+            holder.btnAccept.setVisibility(View.VISIBLE);
+            holder.btnReject.setVisibility(View.VISIBLE);
 
+            holder.btnAccept.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onAccept(item);
+                }
+            });
 
-            String friendUid = item.getUid();
+            holder.btnReject.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onReject(item);
+                }
+            });
 
-            if (friendUid.equals(myUid)) {
-                Toast.makeText(v.getContext(), "자기 자신은 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
-                return;
+        } else if ("pending_sent".equals(status)) {
+            holder.textFriendStatus.setText("레벨: " + levelText + "  친구 요청 보냄");
+
+        } else if ("confirmed".equals(status)) {
+            if (reasonText.isEmpty()) {
+                holder.textFriendStatus.setText("레벨: " + levelText + "  내 친구");
             }
 
-            Map<String, Object> friendData = new HashMap<>();
-            friendData.put(friendUid, true);
+        } else {
+            holder.btnAddFriend.setVisibility(View.VISIBLE);
 
-            db.collection("Friends").document(myUid)
-                    .set(friendData, SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(v.getContext(), item.getName() + "님과 친구가 되었어요!", Toast.LENGTH_SHORT).show();
-
-                        int pos = holder.getAdapterPosition();
-                        if (pos != RecyclerView.NO_POSITION) {
-                            friendList.remove(pos);
-                            notifyItemRemoved(pos);
-                        }
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(v.getContext(), "친구 추가 실패", Toast.LENGTH_SHORT).show()
-                    );
-        });
+            holder.btnAddFriend.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onAddFriendRequested(item);
+                }
+            });
+        }
     }
 
     @Override
@@ -90,15 +92,21 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     }
 
     static class FriendViewHolder extends RecyclerView.ViewHolder {
-        TextView tvItemUserId, tvItemLevel, tvItemReason;
-        ImageButton btnItemAddFriend;
+
+        TextView textFriendName;
+        TextView textFriendStatus;
+        Button btnAccept;
+        Button btnReject;
+        Button btnAddFriend;
 
         public FriendViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvItemUserId = itemView.findViewById(R.id.tvItemUserId);
-            tvItemLevel = itemView.findViewById(R.id.tvItemLevel);
-            tvItemReason = itemView.findViewById(R.id.tvItemReason);
-            btnItemAddFriend = itemView.findViewById(R.id.btnItemAddFriend);
+
+            textFriendName = itemView.findViewById(R.id.text_friend_name);
+            textFriendStatus = itemView.findViewById(R.id.text_friend_status);
+            btnAccept = itemView.findViewById(R.id.btn_accept);
+            btnReject = itemView.findViewById(R.id.btn_reject);
+            btnAddFriend = itemView.findViewById(R.id.btn_add_friend);
         }
     }
 }
