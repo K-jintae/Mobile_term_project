@@ -20,6 +20,9 @@ import androidx.appcompat.widget.AppCompatButton;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,6 +55,8 @@ public class QuizPlayFragment extends Fragment {
     private ImageView quizFaceImage;
     private ImageView quizHatImage;
     private ImageView quizClothesImage;
+
+    private String myUserLevel = "하수";
 
     public QuizPlayFragment() {
     }
@@ -102,7 +107,8 @@ public class QuizPlayFragment extends Fragment {
             loadContinueQuizState();
         }
 
-        loadQuestionSet(currentSubjectId, currentDifficultyLevel);
+        //문제를 바로 로드하지 않고, 내 진짜 파이어스토어 티어를 선행 로드한 뒤 연쇄적으로 문제를 뽑아냅니다.
+        fetchMyActualTierAndLoadQuiz();
 
         btnSubmit.setOnClickListener(v -> {
             if (!isAnswerSubmitted) {
@@ -123,6 +129,36 @@ public class QuizPlayFragment extends Fragment {
         );
 
         return view;
+    }
+
+    // [신규 메서드] 파이어스토어에서 로그인한 유저의 "level" 정보를 안전하게 긁어옵니다.
+    private void fetchMyActualTierAndLoadQuiz(){
+        btnSubmit.setEnabled(false);
+        tvQuestion.setText("유저 정보 분석 중입니다 ...");
+
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        if(auth.getCurrentUser() == null){
+            // 로그인 상태가 아닐 때의 방어선 가동
+            loadQuestionSet(currentSubjectId, currentDifficultyLevel);
+            return;
+        }
+
+        String uid = auth.getCurrentUser().getUid();
+        FirebaseFirestore.getInstance().collection("users").document(uid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if(documentSnapshot.exists()){
+                        String lvl = documentSnapshot.getString("level");
+                        if(lvl != null && !lvl.isEmpty()){
+                            myUserLevel = lvl; // "하수", "중수", "고수" 실시간 동기화 완료!
+                        }
+                    }
+                    // 티어가 정상 확인되면 연쇄적으로 퀴즈 문제셋 로더를 작동시킵니다.
+                    loadQuestionSet(currentSubjectId, currentDifficultyLevel);
+                })
+                .addOnFailureListener(e -> {
+                    // 서버 통신 실패 시에도 퀴즈는 풀 수 있도록 롤백 보장
+                    loadQuestionSet(currentSubjectId, currentDifficultyLevel);
+                });
     }
 
     private void setupCharacterImages() {
@@ -153,24 +189,23 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
+    // 🎯 [QuizPlayFragment.java 내부의 loadQuestionSet 메서드 정석 복구 구역]
     private void loadQuestionSet(int subjectId, String difficultyLevel) {
         btnSubmit.setEnabled(false);
         tvQuestion.setText("문제를 불러오는 중입니다...");
 
-        //  실제 파이어스토어 DB ID를 가져오기
         int dbSubjectId = getFirestoreSubjectId(subjectId);
 
+        // 💡 앞단 화면에서 자물쇠로 버튼을 원천 봉쇄하므로, 여기서는 사용자가 클릭하고 들어온
+        // 정당한 난이도(difficultyLevel)를 100% 신뢰하고 정석대로 서버에 퀴즈를 요청합니다.
         repository.getQuizQuestionsFromFirestore(
-                dbSubjectId, // 변환된 DB ID를 전달
-                difficultyLevel,
+                dbSubjectId,
+                difficultyLevel, // 원본 난이도 그대로 전달
                 10,
                 new QuizRepository.OnQuestionsFetchedListener() {
-
                     @Override
                     public void onSuccess(List<QuizQuestion> questions) {
-                        if (!isAdded()) {
-                            return;
-                        }
+                        if (!isAdded()) return;
 
                         if (questions == null || questions.isEmpty()) {
                             tvQuestion.setText("출제 가능한 문제가 없습니다.");
@@ -178,7 +213,12 @@ public class QuizPlayFragment extends Fragment {
                             return;
                         }
 
-                        selectedQuestions = questions;
+                        // 순수 정석 포맷으로 돌아온 QuizSelector 백트래킹 엔진 가동
+                        try {
+                            selectedQuestions = QuizSelector.selectQuestions(questions, difficultyLevel, myUserLevel);
+                        } catch(Exception e) {
+                            selectedQuestions = questions;
+                        }
 
                         if (!isContinueMode) {
                             currentQuestionIndex = 0;
@@ -187,10 +227,7 @@ public class QuizPlayFragment extends Fragment {
                             earnedGold = 0;
                         }
 
-                        if (currentQuestionIndex < 0) {
-                            currentQuestionIndex = 0;
-                        }
-
+                        if (currentQuestionIndex < 0) currentQuestionIndex = 0;
                         if (currentQuestionIndex >= selectedQuestions.size()) {
                             currentQuestionIndex = selectedQuestions.size() - 1;
                         }
@@ -200,16 +237,8 @@ public class QuizPlayFragment extends Fragment {
 
                     @Override
                     public void onFailure(Exception e) {
-                        if (!isAdded()) {
-                            return;
-                        }
-
-                        tvQuestion.setText(
-                                "출제 가능한 문제가 없습니다.\n\n" +
-                                        "과목 번호: " + currentSubjectId + " (DB ID: " + dbSubjectId + ")\n" +
-                                        "난이도: " + getDifficultyKoreanName(currentDifficultyLevel) + "\n\n" +
-                                        e.getMessage()
-                        );
+                        if (!isAdded()) return;
+                        tvQuestion.setText("출제 가능한 문제가 없습니다...\n" + e.getMessage());
                         btnSubmit.setEnabled(false);
                     }
                 }
@@ -241,7 +270,12 @@ public class QuizPlayFragment extends Fragment {
         enableAllOptions(true);
 
         if (quizFaceImage != null) {
-            quizFaceImage.setImageResource(R.drawable.face_default);
+            Integer currentFaceId = characterViewModel.getFace().getValue();
+            if (currentFaceId != null && currentFaceId != 0) {
+                quizFaceImage.setImageResource(currentFaceId);
+            } else {
+                quizFaceImage.setImageResource(R.drawable.face_default);
+            }
         }
 
         saveContinueQuiz(currentQuestionIndex);
@@ -364,11 +398,6 @@ public class QuizPlayFragment extends Fragment {
         currentQuestionIndex++;
         showQuestionByIndex();
     }
-    // 로그인 유저의 UID를 안전하게 가져오는 메서드
-    private String getPrefUid() {
-        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
-        return (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : "guest";
-    }
 
     private void saveContinueQuiz(int nextIndex) {
         if (getContext() == null) {
@@ -380,7 +409,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE);
+                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
 
         prefs.edit()
                 .putBoolean("has_continue", true)
@@ -399,7 +428,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE);
+                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
 
         boolean hasContinue = prefs.getBoolean("has_continue", false);
 
@@ -423,7 +452,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE)
+                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .apply();
@@ -522,7 +551,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences("quiz_progress_" + getPrefUid(), Context.MODE_PRIVATE);
+                .getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
 
         SharedPreferences.Editor editor = prefs.edit();
 
@@ -533,18 +562,17 @@ public class QuizPlayFragment extends Fragment {
 
         if (canUnlockNextStage()) {
             editor.putInt("stage_" + currentSubjectId + "_clear", 1);
-            //editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
+            editor.putInt("stage_" + (currentSubjectId + 1) + "_before_clear", 1);
         }
 
         editor.apply();
 
         if (canUnlockNextStage()) {
-            //saveNextStageUnlockToFirebase();
-            saveHardClearToFirebase();
+            saveNextStageUnlockToFirebase();
         }
     }
 
-    private void saveHardClearToFirebase() {
+    private void saveNextStageUnlockToFirebase() {
         com.google.firebase.auth.FirebaseAuth mAuth =
                 com.google.firebase.auth.FirebaseAuth.getInstance();
 
@@ -554,11 +582,10 @@ public class QuizPlayFragment extends Fragment {
 
         String uid = mAuth.getCurrentUser().getUid();
 
-        // cleared_hard_stage_N 형태로 저장하여 어떤 과목의 상 난이도를 깼는지 기록
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(uid)
-                .update("cleared_hard_stage_" + currentSubjectId, true);
+                .update("unlocked_stage_" + (currentSubjectId + 1), true);
     }
 
     private void showFinalResult() {
@@ -638,12 +665,6 @@ public class QuizPlayFragment extends Fragment {
     }
 
     private void closeFragment() {
-
-        //퀴즈 종료되면 LeftFragment 갱신 유도
-        Bundle result = new Bundle();
-        result.putBoolean("refresh", true);
-        getParentFragmentManager().setFragmentResult("quiz_result", result);
-
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).closeCurrentFragment();
         }

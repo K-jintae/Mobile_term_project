@@ -49,11 +49,11 @@ public class QuizSelector {
 
     public static List<QuizQuestion> selectQuestions(
             List<QuizQuestion> allQuestions,
-            String selectedDifficulty
+            String selectedDifficulty,
+            String currentUserLevel
     ) {
         QuizRule rule = getRuleByDifficulty(selectedDifficulty);
 
-        // 매번 같은 문제가 나오지 않도록 먼저 섞음
         List<QuizQuestion> shuffled = new ArrayList<>(allQuestions);
         Collections.shuffle(shuffled);
 

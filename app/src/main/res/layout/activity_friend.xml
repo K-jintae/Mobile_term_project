@@ -42,7 +42,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginBottom="12dp">
-
+        <!--자바 코드의 editSearchEmail = findViewById(R.id.edit_search_email); 과 매칭 -->
         <EditText
             android:id="@+id/edit_search_email"
             android:layout_width="0dp"

@@ -686,10 +686,4 @@ public class MainFragment extends Fragment {
             );
         }
     }
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        updateMessage(CharacterState.NORMAL);
-    }
 }

@@ -5,12 +5,13 @@ import android.content.ClipboardManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -33,7 +34,6 @@ import java.util.List;
 import java.util.Set;
 
 public class FriendActivity extends AppCompatActivity implements FriendAdapter.OnFriendActionListener {
-
     private EditText editSearchEmail;
     private Button btnSearchFriend;
     private Button btnRecommendedFriends;
@@ -42,8 +42,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     private LinearLayout layoutMyUserId;
 
     private FriendAdapter adapter;
-    private final List<FriendItem> friendList = new ArrayList<>();
-
+    private List<FriendItem> friendList; // 객체 변수 선언
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
     private DatabaseReference realtimeDb;
@@ -62,7 +61,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_friend);
-
         auth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();
         realtimeDb = FirebaseDatabase.getInstance().getReference();
@@ -74,6 +72,9 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         }
 
         currentUid = auth.getCurrentUser().getUid();
+
+        // 💡 [수정] 아래의 뷰 바인딩 및 어댑터 세팅 전에 리스트를 반드시 먼저 초기화해야 합니다!
+        friendList = new ArrayList<>();
 
         bindViews();
         setupRecycler();
@@ -191,7 +192,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                         if (!isMyFriendMode) return;
 
                         friendList.clear();
-
                         if (!snapshot.exists()) {
                             adapter.notifyDataSetChanged();
                             Toast.makeText(FriendActivity.this, "등록된 친구가 없습니다.", Toast.LENGTH_SHORT).show();
@@ -432,13 +432,11 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
 
     private void recommendFriendsAlgorithm() {
         removePresenceListeners();
-
         friendList.clear();
         excludedUids.clear();
         adapter.notifyDataSetChanged();
 
         excludedUids.add(currentUid);
-
         realtimeDb.child("users")
                 .child(currentUid)
                 .child("friends")
@@ -475,7 +473,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
             findSimilarLevelUsers();
             return;
         }
-
         final int[] remain = {confirmedFriends.size()};
         final Set<String> firstPriorityUids = new HashSet<>();
 
@@ -489,7 +486,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             for (DataSnapshot ds : snapshot.getChildren()) {
                                 String fofUid = ds.getKey();
                                 String status = ds.child("status").getValue(String.class);
-
                                 if (fofUid != null
                                         && "confirmed".equals(status)
                                         && !excludedUids.contains(fofUid)) {
@@ -504,7 +500,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                                     excludedUids.add(uid);
                                     addRecommendedUserToList(uid, "함께 아는 친구");
                                 }
-
                                 findSimilarLevelUsers();
                             }
                         }

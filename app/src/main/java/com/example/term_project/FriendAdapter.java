@@ -1,5 +1,6 @@
 package com.example.term_project;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,7 +9,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.List;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
@@ -30,8 +30,7 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     @NonNull
     @Override
     public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_friend, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
         return new FriendViewHolder(view);
     }
 
@@ -39,12 +38,14 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
 
+        // 💡 [수정] 에러를 유발하던 holder.textName.setText() 중복 코드를 삭제했습니다.
         holder.textFriendName.setText(item.getName() != null ? item.getName() : "이름 없음");
 
         String levelText = item.getLevel() != null ? item.getLevel() : "없음";
         String reasonText = item.getReason() != null ? item.getReason() : "";
         holder.textFriendStatus.setText("레벨: " + levelText + "  " + reasonText);
 
+        // 리사이클러뷰 아이템 재사용 시 뷰가 꼬이지 않도록 가시성 초기화
         holder.btnAccept.setVisibility(View.GONE);
         holder.btnReject.setVisibility(View.GONE);
         holder.btnAddFriend.setVisibility(View.GONE);
@@ -71,11 +72,13 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
             holder.textFriendStatus.setText("레벨: " + levelText + "  친구 요청 보냄");
 
         } else if ("confirmed".equals(status)) {
+            // 빈 값이 아닐 때는 FriendActivity의 실시간 접속 상태(초록점/흰점) 텍스트가 유지되도록 처리
             if (reasonText.isEmpty()) {
                 holder.textFriendStatus.setText("레벨: " + levelText + "  내 친구");
             }
 
         } else {
+            // pending_none (추천 친구) 등의 상태일 때 친구 추가 버튼 활성화
             holder.btnAddFriend.setVisibility(View.VISIBLE);
 
             holder.btnAddFriend.setOnClickListener(v -> {
@@ -88,11 +91,10 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
 
     @Override
     public int getItemCount() {
-        return friendList.size();
+        return friendList != null ? friendList.size() : 0;
     }
 
     static class FriendViewHolder extends RecyclerView.ViewHolder {
-
         TextView textFriendName;
         TextView textFriendStatus;
         Button btnAccept;
@@ -101,7 +103,6 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
 
         public FriendViewHolder(@NonNull View itemView) {
             super(itemView);
-
             textFriendName = itemView.findViewById(R.id.text_friend_name);
             textFriendStatus = itemView.findViewById(R.id.text_friend_status);
             btnAccept = itemView.findViewById(R.id.btn_accept);
