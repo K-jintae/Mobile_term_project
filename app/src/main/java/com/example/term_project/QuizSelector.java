@@ -20,13 +20,33 @@ public class QuizSelector {
         }
     }
 
+    /**
+     * [신규 추가] DB의 난이도 텍스트가 "상", "Hard", "hard " 등 어떤 형태든
+     * 안전하게 규격화된 소문자("hard", "normal", "easy")로 맵핑해 주는 방어 메서드입니다.
+     */
+    private static String normalizeLevel(String level) {
+        if (level == null) {
+            return "easy";
+        }
+        String normalized = level.trim().toLowerCase();
+        if ("hard".equals(normalized) || "상".equals(normalized)) {
+            return "hard";
+        }
+        if ("normal".equals(normalized) || "middle".equals(normalized) || "중".equals(normalized)) {
+            return "normal";
+        }
+        return "easy";
+    }
+
     public static QuizRule getRuleByDifficulty(String selectedDifficulty) {
-        if ("hard".equals(selectedDifficulty)) {
+        String normalized = normalizeLevel(selectedDifficulty);
+
+        if ("hard".equals(normalized)) {
             // 상 단계: 쉬움 2개, 중간 3개, 어려움 3개까지
             return new QuizRule(180, 2, 3, 3);
         }
 
-        if ("normal".equals(selectedDifficulty)) {
+        if ("normal".equals(normalized)) {
             // 중 단계: 쉬움 3개, 중간 3개, 어려움 1개까지
             return new QuizRule(120, 3, 3, 1);
         }
@@ -36,11 +56,13 @@ public class QuizSelector {
     }
 
     public static int getScoreByDifficulty(String difficultyLevel) {
-        if ("hard".equals(difficultyLevel)) {
+        String normalized = normalizeLevel(difficultyLevel);
+
+        if ("hard".equals(normalized)) {
             return 45;
         }
 
-        if ("normal".equals(difficultyLevel)) {
+        if ("normal".equals(normalized)) {
             return 30;
         }
 
@@ -113,7 +135,8 @@ public class QuizSelector {
                 best
         );
 
-        String level = current.getDifficultyLevel();
+        // [버그 수정 고정석] 현재 검사 대상 문제의 난이도를 안전하게 보정 부품을 거치게 만듭니다.
+        String level = normalizeLevel(current.getDifficultyLevel());
         int score = getScoreByDifficulty(level);
 
         int nextEasy = easyCount;
@@ -123,7 +146,7 @@ public class QuizSelector {
         if ("hard".equals(level)) {
             nextHard++;
             if (nextHard > rule.maxHard) {
-                return;
+                return; // 이제 maxHard가 0일 때 상 문제가 들어오면 칼같이 차단당합니다!
             }
         } else if ("normal".equals(level)) {
             nextNormal++;
@@ -172,8 +195,6 @@ public class QuizSelector {
             return true;
         }
 
-        // 점수가 같으면 문제 수가 더 적은 조합을 선택
-        // 너무 많은 쉬운 문제로 채워지는 것을 추가로 방지
         if (currentScore == best.score && selected.size() < best.questions.size()) {
             return true;
         }

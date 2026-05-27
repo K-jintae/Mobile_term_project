@@ -1,5 +1,7 @@
 package com.example.term_project;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -19,6 +21,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class QuizDifficultyFragment extends Fragment {
 
     private int subjectId;
+    private SharedPreferences prefs;
 
     private static final String EASY = "easy";
     private static final String NORMAL = "normal";
@@ -42,18 +45,20 @@ public class QuizDifficultyFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // onCreateView에서는 오직 레이아웃을 인플레이트하는 역할만 수행합니다.
         return inflater.inflate(R.layout.fragment_quiz_difficulty, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Log.d("UserLevelCheck", "onViewCreated 진입 - 뷰 초기화 및 리스너 등록 시작");
+        Log.d("UserLevelCheck", "onViewCreated 진입 - 규칙 통합 초기화 시작");
 
         if (getArguments() != null) {
             subjectId = getArguments().getInt("subject_id");
         }
+
+        // 로컬 클리어 진척도 장부 및 등급 캐시 연결
+        prefs = requireContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
 
         // 뷰 바인딩
         btnEasy = view.findViewById(R.id.btnEasy);
@@ -61,60 +66,58 @@ public class QuizDifficultyFragment extends Fragment {
         btnHard = view.findViewById(R.id.btnHard);
         tvClose = view.findViewById(R.id.tvClose);
 
-        // [1단계] 클릭 리스너 연결
+        // 규칙 1 및 규칙 2를 반영한 버튼 클릭 리스너 연결
         btnEasy.setOnClickListener(v -> {
-            if (userLevel.contains("하수") || userLevel.contains("중수") || userLevel.contains("고수")) {
-                moveToQuizPlay(EASY, EASY_TARGET_SCORE);
-            }
+            moveToQuizPlay(EASY, EASY_TARGET_SCORE);
         });
 
         btnNormal.setOnClickListener(v -> {
-            if (userLevel.contains("중수") || userLevel.contains("고수")) {
+            boolean isEasyClear = prefs.getInt("subject_" + subjectId + "_easy_clear", 0) == 1;
+
+            // 규칙 1(중수 이상 등급) 또는 규칙 2(현재 과목의 하 난이도 클리어) 중 하나라도 만족하면 입장 가능
+            if (userLevel.contains("중수") || userLevel.contains("고수") || isEasyClear) {
                 moveToQuizPlay(NORMAL, NORMAL_TARGET_SCORE);
             } else {
-                Toast.makeText(getContext(), "중수 등급 이상만 도전할 수 있습니다.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "하 난이도를 먼저 클리어하거나 중수 등급 이상이어야 합니다.", Toast.LENGTH_SHORT).show();
             }
         });
 
         btnHard.setOnClickListener(v -> {
-            if (userLevel.contains("고수")) {
+            boolean isNormalClear = prefs.getInt("subject_" + subjectId + "_normal_clear", 0) == 1;
+
+            // 규칙 1(고수 등급) 또는 규칙 2(현재 과목의 중 난이도 클리어) 중 하나라도 만족하면 입장 가능
+            if (userLevel.contains("고수") || isNormalClear) {
                 moveToQuizPlay(HARD, HARD_TARGET_SCORE);
             } else {
-                Toast.makeText(getContext(), "고수 등급만 도전할 수 있습니다.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "중 난이도를 먼저 클리어하거나 고수 등급이어야 합니다.", Toast.LENGTH_SHORT).show();
             }
         });
 
         if (tvClose != null) {
             tvClose.setOnClickListener(v -> {
                 if (getActivity() instanceof MainActivity) {
-                    // MainActivity에 정석으로 구현된 프래그먼트 종료 메서드를 호출합니다.
-                    // 이 메서드가 백스택을 비우고 컨테이너 레이아웃을 GONE 처리하여 화면을 완전히 치웁니다.
                     ((MainActivity) getActivity()).closeCurrentFragment();
                 }
             });
         }
 
-        // [2단계] 화면이 뜨자마자 우선 무조건 모든 버튼을 잠금(연한 상태) 처리합니다.
-        lockButtonInstantly(btnEasy, "하");
-        lockButtonInstantly(btnNormal, "중");
-        lockButtonInstantly(btnHard, "상");
+        // 비동기 깜빡임 현상을 방지하기 위해, 먼저 로컬에 저장되어 있던 기존 등급으로 UI를 즉시 그려줍니다.
+        userLevel = prefs.getString("cached_user_level", "하수");
+        applyLevelRestrictionUI();
 
-        // [3단계] 서버에서 내 진짜 티어 체킹하러 출발
+        // 이어서 서버의 최신 유저 등급 장부(규칙 3 승급 반영용)를 동기화하러 출발합니다.
         checkUserLevelAndRestrictAccess();
     }
 
     private void checkUserLevelAndRestrictAccess() {
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() == null) {
-            // 로그인 안 된 상태도 추적 가능하도록 로그 추가
             userLevel = "하수";
-            Log.d("UserLevelCheck", "현재 로그인된 유저가 없습니다. 기본값 [하수]로 제한을 적용합니다.");
             applyLevelRestrictionUI();
             return;
         }
 
         String uid = auth.getCurrentUser().getUid();
-        Log.d("UserLevelCheck", "로그인 유저 UID 확인됨: " + uid + " -> Firestore 호출합니다.");
 
         FirebaseFirestore.getInstance()
                 .collection("users").document(uid).get()
@@ -123,6 +126,9 @@ public class QuizDifficultyFragment extends Fragment {
                         String lvl = documentSnapshot.getString("level");
                         if (lvl != null && !lvl.isEmpty()) {
                             userLevel = lvl.trim();
+
+                            // 규칙 3에 의해 등급이 상승했다면, 다음 진입 시 깜빡이지 않도록 로컬 장부도 동기화합니다.
+                            prefs.edit().putString("cached_user_level", userLevel).apply();
                         } else {
                             userLevel = "하수";
                         }
@@ -130,46 +136,41 @@ public class QuizDifficultyFragment extends Fragment {
                         userLevel = "하수";
                     }
 
-                    Log.d("UserLevelCheck", "파이어스토어 로드 성공! 실제 유저 티어: [" + userLevel + "]");
+                    Log.d("UserLevelCheck", "파이어스토어 동기화 완료 - 현재 등급: [" + userLevel + "]");
                     applyLevelRestrictionUI();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("UserLevelCheck", "파이어스토어 로드 실패 (통신 에러)", e);
-                    userLevel = "하수";
+                    Log.e("UserLevelCheck", "파이어스토어 로드 실패", e);
                     applyLevelRestrictionUI();
                 });
     }
 
+    /*
+     * 정해진 규칙 순서대로 UI 버튼의 활성화/투명도 상태를 매칭하는 핵심 메서드입니다.
+     */
     private void applyLevelRestrictionUI() {
         if (btnEasy == null || btnNormal == null || btnHard == null) {
-            Log.e("UserLevelCheck", "applyLevelRestrictionUI 에러: 버튼 뷰가 null입니다.");
             return;
         }
 
-        Log.d("UserLevelCheck", "applyLevelRestrictionUI 실행 처리 시작 - 현재 티어: " + userLevel);
+        // 현재 과목의 하, 중 난이도 개별 클리어 여부를 장부에서 가져옵니다.
+        boolean isEasyClear = prefs.getInt("subject_" + subjectId + "_easy_clear", 0) == 1;
+        boolean isNormalClear = prefs.getInt("subject_" + subjectId + "_normal_clear", 0) == 1;
 
-        if (userLevel.contains("하수")) {
-            Log.d("UserLevelCheck", "결과: 하수 UI 적용 (하 진하게 / 중,상 연하게)");
-            unlockButton(btnEasy, "하");
-            lockButtonInstantly(btnNormal, "중");
-            lockButtonInstantly(btnHard, "상");
+        // 하 난이도는 기본 개방 상태이므로 상시 활성화
+        unlockButton(btnEasy, "하");
 
-        } else if (userLevel.contains("중수")) {
-            Log.d("UserLevelCheck", "결과: 중수 UI 적용 (하,중 진하게 / 상 연하게)");
-            unlockButton(btnEasy, "하");
+        // 중 난이도 판정 규칙: 유저 등급이 중수/고수이거나, 현재 과목의 하 단계를 깼을 때 해금
+        if (userLevel.contains("중수") || userLevel.contains("고수") || isEasyClear) {
             unlockButton(btnNormal, "중");
-            lockButtonInstantly(btnHard, "상");
-
-        } else if (userLevel.contains("고수")) {
-            Log.d("UserLevelCheck", "결과: 고수 UI 적용 (모든 난이도 프리패스 진하게)");
-            unlockButton(btnEasy, "하");
-            unlockButton(btnNormal, "중");
-            unlockButton(btnHard, "상");
-
         } else {
-            Log.d("UserLevelCheck", "결과: 예외 등급 감지 -> 하수 UI로 대체");
-            unlockButton(btnEasy, "하");
             lockButtonInstantly(btnNormal, "중");
+        }
+
+        // 상 난이도 판정 규칙: 유저 등급이 고수이거나, 현재 과목의 중 단계를 깼을 때 해금
+        if (userLevel.contains("고수") || isNormalClear) {
+            unlockButton(btnHard, "상");
+        } else {
             lockButtonInstantly(btnHard, "상");
         }
     }
@@ -177,17 +178,17 @@ public class QuizDifficultyFragment extends Fragment {
     private void lockButtonInstantly(Button button, String text) {
         if (button == null) return;
         button.setText(text);
-        // ARGB 알파 투명도(4C)를 결합하여 완벽하게 흐린 갈색으로 강제 고정
         button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#4CDCD3C9")));
         button.setTextColor(Color.parseColor("#4C4A3B32"));
+        button.setAlpha(0.4f);
     }
 
     private void unlockButton(Button button, String text) {
         if (button == null) return;
         button.setText(text);
-        // 원본의 진하고 선명한 베이지 및 밤색 복구
         button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#DCD3C9")));
         button.setTextColor(Color.parseColor("#4A3B32"));
+        button.setAlpha(1.0f);
     }
 
     private void moveToQuizPlay(String difficulty, int targetScore) {
