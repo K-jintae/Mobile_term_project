@@ -1,5 +1,6 @@
 package com.example.term_project;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +13,7 @@ public class QuizQuestion {
     private String difficultyLevel;
 
     public QuizQuestion() {
-        // Firebase Realtime Database 역직렬화용 기본 생성자
+        // Firebase 역직렬화용 기본 생성자
     }
 
     public QuizQuestion(int quizId, String question, String[] options, int correctAnswerIndex, String difficultyLevel) {
@@ -63,13 +64,25 @@ public class QuizQuestion {
         this.difficultyLevel = difficultyLevel;
     }
 
+    // Realtime Database 저장용
+    // String[]를 그대로 저장하면 터지므로, 여기서만 ArrayList로 변환
     public Map<String, Object> toBattleMap() {
         Map<String, Object> map = new HashMap<>();
+
         map.put("quizId", quizId);
         map.put("question", question);
-        map.put("options", options);
+
+        ArrayList<String> optionList = new ArrayList<>();
+        if (options != null) {
+            for (String option : options) {
+                optionList.add(option);
+            }
+        }
+
+        map.put("options", optionList);
         map.put("correctAnswerIndex", correctAnswerIndex);
         map.put("difficultyLevel", difficultyLevel);
+
         return map;
     }
 }

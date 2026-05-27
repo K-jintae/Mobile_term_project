@@ -270,7 +270,7 @@ public class BattleQuizActivity extends AppCompatActivity {
         DataSnapshot questionSnap = room.child("questions");
 
         for (DataSnapshot child : questionSnap.getChildren()) {
-            QuizQuestion q = child.getValue(QuizQuestion.class);
+            QuizQuestion q = snapshotToQuizQuestion(child);
 
             if (q != null) {
                 questions.add(q);
@@ -746,5 +746,44 @@ public class BattleQuizActivity extends AppCompatActivity {
         super.onDestroy();
         stopTimer();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    private QuizQuestion snapshotToQuizQuestion(DataSnapshot snapshot) {
+        if (snapshot == null || !snapshot.exists()) {
+            return null;
+        }
+
+        Long quizIdLong = snapshot.child("quizId").getValue(Long.class);
+        String questionText = snapshot.child("question").getValue(String.class);
+        Long correctIndexLong = snapshot.child("correctAnswerIndex").getValue(Long.class);
+        String difficultyLevel = snapshot.child("difficultyLevel").getValue(String.class);
+
+        if (questionText == null) {
+            return null;
+        }
+
+        int quizId = quizIdLong != null ? quizIdLong.intValue() : 0;
+        int correctAnswerIndex = correctIndexLong != null ? correctIndexLong.intValue() : 0;
+
+        ArrayList<String> optionList = new ArrayList<>();
+
+        DataSnapshot optionsSnap = snapshot.child("options");
+        for (DataSnapshot optionChild : optionsSnap.getChildren()) {
+            String option = optionChild.getValue(String.class);
+
+            if (option != null) {
+                optionList.add(option);
+            }
+        }
+
+        String[] options = optionList.toArray(new String[0]);
+
+        return new QuizQuestion(
+                quizId,
+                questionText,
+                options,
+                correctAnswerIndex,
+                difficultyLevel
+        );
     }
 }
