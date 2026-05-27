@@ -58,7 +58,9 @@ public class QuizDifficultyFragment extends Fragment {
         }
 
         // 로컬 클리어 진척도 장부 및 등급 캐시 연결
-        prefs = requireContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        String uid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+        prefs = requireContext().getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
 
         // 뷰 바인딩
         btnEasy = view.findViewById(R.id.btnEasy);

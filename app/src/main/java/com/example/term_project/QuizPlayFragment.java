@@ -663,8 +663,13 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
+        // 로그인한 유저의 고유 UID를 가져오고, 없으면 guest로 처리합니다.
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        String uid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+
+        // 파일 이름 뒤에 _UID를 붙여 계정별 전용 장부를 생성합니다.
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+                .getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
 
         SharedPreferences.Editor editor = prefs.edit();
 

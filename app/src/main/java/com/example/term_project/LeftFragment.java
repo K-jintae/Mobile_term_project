@@ -43,7 +43,9 @@ public class LeftFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_left, container, false);
 
-        prefs = requireContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        String uid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+        prefs = requireContext().getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
 
         // fragment_left.xml의 1~9번 과목 카드 연결
         cardQuiz1 = view.findViewById(R.id.cardQuiz1);
