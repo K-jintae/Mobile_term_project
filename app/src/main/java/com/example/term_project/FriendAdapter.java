@@ -10,6 +10,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendViewHolder> {
 
@@ -38,12 +41,14 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
 
-        // 💡 [수정] 에러를 유발하던 holder.textName.setText() 중복 코드를 삭제했습니다.
+        //에러를 유발하던 holder.textName.setText() 중복 코드를 삭제했습니다.
         holder.textFriendName.setText(item.getName() != null ? item.getName() : "이름 없음");
 
         String levelText = item.getLevel() != null ? item.getLevel() : "없음";
         String reasonText = item.getReason() != null ? item.getReason() : "";
-        holder.textFriendStatus.setText("레벨: " + levelText + "  " + reasonText);
+        applyLevelColor(holder.textFriendStatus,
+                levelText,
+                reasonText);
 
         // 리사이클러뷰 아이템 재사용 시 뷰가 꼬이지 않도록 가시성 초기화
         holder.btnAccept.setVisibility(View.GONE);
@@ -74,7 +79,11 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
             });
 
         } else if ("pending_sent".equals(status)) {
-            holder.textFriendStatus.setText("레벨: " + levelText + "  친구 요청 보냄");
+            applyLevelColor(
+                    holder.textFriendStatus,
+                    levelText,
+                    "친구 요청 보냄"
+            );
 
             holder.btnAddFriend.setVisibility(View.VISIBLE);
             holder.btnAddFriend.setText("요청 취소");
@@ -88,7 +97,11 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         } else if ("confirmed".equals(status)) {
             // 빈 값이 아닐 때는 FriendActivity의 실시간 접속 상태(초록점/흰점) 텍스트가 유지되도록 처리
             if (reasonText.isEmpty()) {
-                holder.textFriendStatus.setText("레벨: " + levelText + "  내 친구");
+                applyLevelColor(
+                        holder.textFriendStatus,
+                        levelText,
+                        "내 친구"
+                );
             }
 
         } else {
@@ -123,5 +136,49 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
             btnReject = itemView.findViewById(R.id.btn_reject);
             btnAddFriend = itemView.findViewById(R.id.btn_add_friend);
         }
+    }
+
+    private void applyLevelColor(TextView textView,
+                                 String level,
+                                 String reason) {
+
+        String text;
+
+        if (reason == null || reason.isEmpty()) {
+            text = "레벨: " + level;
+        } else {
+            text = "레벨: " + level + "   |   " + reason;
+        }
+
+        SpannableString spannable = new SpannableString(text);
+
+        int start = text.indexOf(level);
+        int end = start + level.length();
+
+        int color = Color.GRAY;
+
+        switch (level) {
+
+            case "하수":
+                color = Color.parseColor("#9CCC65"); // 연두
+                break;
+
+            case "중수":
+                color = Color.parseColor("#64B5F6"); // 하늘
+                break;
+
+            case "고수":
+                color = Color.parseColor("#FFB74D"); // 주황
+                break;
+        }
+
+        spannable.setSpan(
+                new ForegroundColorSpan(color),
+                start,
+                end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+
+        textView.setText(spannable);
     }
 }

@@ -5,6 +5,7 @@ import android.content.ClipboardManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -50,6 +51,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     private String currentUid;
     private String currentName = "";
     private String myLevel = "레벨 없음";
+    private ImageButton btnCopyId;
 
     private boolean isMyFriendMode = true;
 
@@ -90,6 +92,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         recyclerFriends = findViewById(R.id.recycler_friends);
         tvMyId = findViewById(R.id.tv_my_id);
         layoutMyUserId = findViewById(R.id.layout_my_user_id);
+        btnCopyId = findViewById(R.id.btn_copy_id);
     }
 
     private void setupRecycler() {
@@ -169,11 +172,15 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
 
         tvMyId.setPaintFlags(tvMyId.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
 
-        layoutMyUserId.setOnClickListener(v -> {
+        btnCopyId.setOnClickListener(v -> {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("my_id", myId);
             cm.setPrimaryClip(clip);
-            Toast.makeText(this, "내 아이디가 복사되었습니다.", Toast.LENGTH_SHORT).show();
+            if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.S_V2) {
+                Toast.makeText(FriendActivity.this,
+                        "내 아이디가 복사되었습니다.",
+                        Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -518,7 +525,9 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 .child(currentUid)
                 .setValue(receivedItem)
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(this, targetName + "님에게 친구 요청을 보냈습니다.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(FriendActivity.this,
+                            targetName + "님에게 친구 요청을 보냈습니다.",
+                            Toast.LENGTH_SHORT).show();
                     editSearchEmail.setText("");
 
                     removeItemFromListByUid(targetUid);
@@ -756,7 +765,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             });
                 });
     }
-
     @Override
     public void onAccept(FriendItem item) {
         String targetUid = item.getUid();
@@ -775,7 +783,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 .child("status")
                 .setValue("confirmed")
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(this, item.getName() + "님과 친구가 되었습니다.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(FriendActivity.this, item.getName() + "님과 친구가 되었습니다.", Toast.LENGTH_SHORT).show();
                     loadFriendsList();
                 });
     }
@@ -799,7 +807,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 .addOnSuccessListener(unused -> {
 
                     if ("pending_sent".equals(status)) {
-                        Toast.makeText(this, "친구 요청을 취소했습니다.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(FriendActivity.this, "친구 요청을 취소했습니다.", Toast.LENGTH_SHORT).show();
 
                     } else if ("pending_received".equals(status)) {
                         Toast.makeText(this, "친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show();
