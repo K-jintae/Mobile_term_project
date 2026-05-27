@@ -72,8 +72,6 @@ public class MainActivity extends AppCompatActivity {
         viewPager.setAdapter(new ViewPagerAdapter(this));
         viewPager.setCurrentItem(1, false);
 
-        checkLongAbsenceState();
-
         //배경음악 재생
         isSoundOn = loadSoundSetting();
 
@@ -89,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
         // 로그인 유저 설정 불러오기
         if (mAuth.getCurrentUser() != null) {
             currentUid = mAuth.getCurrentUser().getUid(); // 전역 변수에 UID 할당
+
+            checkLongAbsenceState();
 
             DatabaseReference myStatusRef = mRealtimeDatabase.getReference("/status/" + currentUid);
             DatabaseReference connectedRef = mRealtimeDatabase.getReference(".info/connected");

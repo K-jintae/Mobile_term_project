@@ -103,11 +103,11 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
             String input = editSearchEmail.getText().toString().trim();
 
             if (input.isEmpty()) {
-                Toast.makeText(this, "검색할 아이디 또는 이름을 입력해 주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "검색할 닉네임을 입력해 주세요.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            searchAndAddFriend(input);
+            searchFriendAndShowResult(input);
         });
 
         btnRecommendedFriends.setOnClickListener(v -> {
@@ -301,7 +301,128 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         presenceRefs.add(statusRef);
         presenceListeners.add(listener);
     }
+    private void searchFriendAndShowResult(String input) {
+        removePresenceListeners();
 
+        isMyFriendMode = false;
+        btnRecommendedFriends.setText("내 친구 목록 보기");
+        btnRecommendedFriends.setBackgroundTintList(
+                ColorStateList.valueOf(Color.parseColor("#F5EBE0"))
+        );
+
+        friendList.clear();
+        adapter.notifyDataSetChanged();
+
+        String keyword = input.toLowerCase();
+
+        firestore.collection("users")
+                .limit(100)
+                .get()
+                .addOnSuccessListener(query -> {
+                    friendList.clear();
+
+                    for (DocumentSnapshot doc : query.getDocuments()) {
+                        String targetUid = doc.getId();
+
+                        if (targetUid.equals(currentUid)) {
+                            continue;
+                        }
+
+                        String id = doc.getString("id");
+                        String userId = doc.getString("userId");
+                        String name = doc.getString("name");
+
+                        boolean matched = false;
+
+                        if (id != null && id.toLowerCase().contains(keyword)) {
+                            matched = true;
+                        }
+
+                        if (userId != null && userId.toLowerCase().contains(keyword)) {
+                            matched = true;
+                        }
+
+                        if (name != null && name.toLowerCase().contains(keyword)) {
+                            matched = true;
+                        }
+
+                        if (!matched) {
+                            continue;
+                        }
+
+                        String displayName = id;
+
+                        if (displayName == null || displayName.isEmpty()) {
+                            displayName = userId;
+                        }
+
+                        if (displayName == null || displayName.isEmpty()) {
+                            displayName = name;
+                        }
+
+                        if (displayName == null || displayName.isEmpty()) {
+                            displayName = "사용자";
+                        }
+
+                        String level = doc.getString("level");
+                        if (level == null || level.isEmpty()) {
+                            level = "없음";
+                        }
+
+                        FriendItem item = new FriendItem(targetUid, displayName, "pending_none", level);
+                        item.setReason("검색 결과");
+
+                        checkFriendStatusAndAddToSearchResult(item);
+                    }
+
+                    if (friendList.isEmpty()) {
+                        Toast.makeText(this, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void checkFriendStatusAndAddToSearchResult(FriendItem item) {
+        realtimeDb.child("users")
+                .child(currentUid)
+                .child("friends")
+                .child(item.getUid())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (isMyFriendMode) {
+                            return;
+                        }
+
+                        if (snapshot.exists()) {
+                            FriendItem savedItem = snapshot.getValue(FriendItem.class);
+
+                            if (savedItem != null && savedItem.getStatus() != null) {
+                                item.setStatus(savedItem.getStatus());
+
+                                if ("pending_sent".equals(savedItem.getStatus())) {
+                                    item.setReason("친구 요청 보냄");
+                                } else if ("confirmed".equals(savedItem.getStatus())) {
+                                    item.setReason("내 친구");
+                                } else if ("pending_received".equals(savedItem.getStatus())) {
+                                    item.setReason("나에게 온 요청");
+                                }
+                            }
+                        }
+
+                        friendList.add(item);
+                        adapter.notifyItemInserted(friendList.size() - 1);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        friendList.add(item);
+                        adapter.notifyItemInserted(friendList.size() - 1);
+                    }
+                });
+    }
     private void searchAndAddFriend(String input) {
         searchUserByField("id", input, found -> {
             if (found) return;

@@ -61,7 +61,7 @@
             android:layout_width="90dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
-            android:text="신청"
+            android:text="검색"
             android:textSize="14sp" />
     </LinearLayout>
 

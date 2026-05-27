@@ -71,6 +71,15 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         } else if ("pending_sent".equals(status)) {
             holder.textFriendStatus.setText("레벨: " + levelText + "  친구 요청 보냄");
 
+            holder.btnAddFriend.setVisibility(View.VISIBLE);
+            holder.btnAddFriend.setText("요청 취소");
+
+            holder.btnAddFriend.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onReject(item);
+                }
+            });
+
         } else if ("confirmed".equals(status)) {
             // 빈 값이 아닐 때는 FriendActivity의 실시간 접속 상태(초록점/흰점) 텍스트가 유지되도록 처리
             if (reasonText.isEmpty()) {
