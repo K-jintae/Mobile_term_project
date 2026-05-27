@@ -1,43 +1,61 @@
 package com.example.term_project;
 
 public class FriendItem {
-    private String uid;           // 친구의 고유 UID (Firebase 식별용)
-    private String name;          // 화면에 표시할 이름
-    private String status;        // 관계 상태 ("pending_sent": 보냄, "pending_received": 받음, "confirmed": 서로친구, "pending_none": 추천친구)
-    private String reason;        // 추천 사유 또는 실시간 접속 상태 태그
-    private String level;         // 유저의 난이도 레벨 (고수/중수/하수/없음)
-    private boolean alreadyFriend; // 이미 친구이거나 관계가 정립된 유저인지 판별하는 플래그
+
+    private String uid;       // 친구 UID
+    private String name;      // 화면 표시 이름
+    private String userId;    // battle-quiz 호환용 표시 ID
+    private String status;    // pending_sent, pending_received, confirmed, pending_none
+    private String reason;    // 추천 사유 또는 온라인 상태
+    private String level;     // 유저 레벨
+    private boolean alreadyFriend;
+    private boolean online;
 
     // Firebase Realtime Database 객체 변환용 빈 생성자
     public FriendItem() {
     }
 
+    // main 기존 구조 호환용
     public FriendItem(String uid, String name, String status, String level) {
         this.uid = uid;
-        this.name = name;
-        this.status = status;
+        this.name = safeName(name);
+        this.userId = safeName(name);
+        this.status = safeStatus(status);
         this.level = normalizeLevel(level);
-        this.alreadyFriend = "confirmed".equals(status);
+        this.reason = "";
+        this.alreadyFriend = "confirmed".equals(this.status);
+        this.online = false;
     }
 
+    // main 기존 구조 호환용
     public FriendItem(String uid, String name, String status) {
-        this.uid = uid;
-        this.name = name;
-        this.status = status;
-        this.level = "없음";
-        this.alreadyFriend = "confirmed".equals(status);
+        this(uid, name, status, "없음");
     }
 
+    // main 추천 친구 구조 호환용
     public FriendItem(String uid, String name, String level, String reason, boolean alreadyFriend) {
         this.uid = uid;
-        this.name = name;
+        this.name = safeName(name);
+        this.userId = safeName(name);
         this.level = normalizeLevel(level);
-        this.reason = reason;
+        this.reason = reason == null ? "" : reason;
         this.alreadyFriend = alreadyFriend;
         this.status = alreadyFriend ? "confirmed" : "pending_none";
+        this.online = false;
     }
 
-    // 레벨 값이 비어있거나 null일 때 "없음"으로 안전하게 처리하는 메서드
+    // battle-quiz 구조 호환용
+    public FriendItem(String uid, String userId, String level, String reason, boolean alreadyFriend, boolean online) {
+        this.uid = uid;
+        this.name = safeName(userId);
+        this.userId = safeName(userId);
+        this.level = normalizeLevel(level);
+        this.reason = reason == null ? "" : reason;
+        this.alreadyFriend = alreadyFriend;
+        this.status = alreadyFriend ? "confirmed" : "pending_none";
+        this.online = online;
+    }
+
     private String normalizeLevel(String level) {
         if (level == null || level.trim().isEmpty()) {
             return "없음";
@@ -45,7 +63,19 @@ public class FriendItem {
         return level;
     }
 
-    // ==================== Getter & Setter 영역 ====================
+    private String safeName(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "사용자";
+        }
+        return value;
+    }
+
+    private String safeStatus(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "pending_none";
+        }
+        return value;
+    }
 
     public String getUid() {
         return uid;
@@ -55,12 +85,30 @@ public class FriendItem {
         this.uid = uid;
     }
 
+    // main 기존 코드 호환
     public String getName() {
+        if (name == null || name.trim().isEmpty()) {
+            return userId == null ? "사용자" : userId;
+        }
         return name;
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = safeName(name);
+        this.userId = safeName(name);
+    }
+
+    // battle-quiz 기존 코드 호환
+    public String getUserId() {
+        if (userId == null || userId.trim().isEmpty()) {
+            return getName();
+        }
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = safeName(userId);
+        this.name = safeName(userId);
     }
 
     public String getStatus() {
@@ -68,31 +116,42 @@ public class FriendItem {
     }
 
     public void setStatus(String status) {
-        this.status = status;
-        this.alreadyFriend = "confirmed".equals(status); // 상태가 바뀔 때 플래그도 동기화
+        this.status = safeStatus(status);
+        this.alreadyFriend = "confirmed".equals(this.status);
     }
 
     public String getReason() {
-        return reason;
+        return reason == null ? "" : reason;
     }
 
     public void setReason(String reason) {
-        this.reason = reason;
+        this.reason = reason == null ? "" : reason;
     }
 
     public String getLevel() {
-        return level;
+        return normalizeLevel(level);
     }
 
     public void setLevel(String level) {
-        this.level = normalizeLevel(level); // 값을 세팅할 때도 안전화 로직 적용
+        this.level = normalizeLevel(level);
     }
 
     public boolean isAlreadyFriend() {
-        return alreadyFriend;
+        return alreadyFriend || "confirmed".equals(status);
     }
 
     public void setAlreadyFriend(boolean alreadyFriend) {
         this.alreadyFriend = alreadyFriend;
+        if (alreadyFriend) {
+            this.status = "confirmed";
+        }
+    }
+
+    public boolean isOnline() {
+        return online;
+    }
+
+    public void setOnline(boolean online) {
+        this.online = online;
     }
 }

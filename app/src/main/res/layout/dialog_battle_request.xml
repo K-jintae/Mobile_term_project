@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_battle_dialog"
+    android:padding="22dp">
+
+    <TextView
+        android:id="@+id/tvBattleDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="대전 신청"
+        android:textColor="#222222"
+        android:textSize="19sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvBattleDialogDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="10문제 동시 턴제 대전입니다.\n각 문제 제한 시간은 10초입니다."
+        android:textColor="#222222"
+        android:textSize="14sp"
+        android:lineSpacingExtra="3dp" />
+
+    <TextView
+        android:id="@+id/tvBattleGold"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:paddingBottom="8dp"
+        android:text="베팅 골드 기본값: 100"
+        android:textColor="#888888"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:background="@drawable/bg_bottom_line" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/btnBattleCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="취소"
+            android:textColor="#B5A991"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnBattleApply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="22dp"
+            android:padding="10dp"
+            android:text="신청"
+            android:textColor="#C7A96A"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>

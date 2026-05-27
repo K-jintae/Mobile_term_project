@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
     private TextView tvPlayerName;
     private TextView tvGold;
+    private BattleRequestManager battleRequestManager;
 
     // activity_main.xml에 추가한 overlay용 컨테이너
     private View fragmentContainer;
@@ -67,6 +68,11 @@ public class MainActivity extends AppCompatActivity {
         tvPlayerName = findViewById(R.id.tvPlayerName);
         tvGold = findViewById(R.id.tvGold);
         fragmentContainer = findViewById(R.id.fragment_container);
+
+        //확인필요
+        battleRequestManager = new BattleRequestManager(this);
+        battleRequestManager.listenIncomingBattleRequests();
+        battleRequestManager.listenAcceptedOutgoingBattleRequests();
 
         // ViewPager 설정
         viewPager.setAdapter(new ViewPagerAdapter(this));
@@ -233,11 +239,16 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        if (battleRequestManager != null) {
+            battleRequestManager.dismissCurrentDialog();
+        }
+
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
         }
+
+        super.onDestroy();
     }
 
     public void updateUserGold(int amount) {
