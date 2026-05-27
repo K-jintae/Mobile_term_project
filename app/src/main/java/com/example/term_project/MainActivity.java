@@ -303,6 +303,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public LeftFragment leftFragmentInstance = null;
+
+
+    // 2. 기존 closeCurrentFragment() 메서드를 아래 코드로 완전히 교체합니다.
     public void closeCurrentFragment() {
         if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
             getSupportFragmentManager().popBackStack();
@@ -310,6 +314,11 @@ public class MainActivity extends AppCompatActivity {
 
             if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
                 fragmentContainer.setVisibility(View.GONE);
+
+                // 탐색 루프를 돌지 않고, 등록된 인스턴스를 저격하여 즉시 새로고침을 실행합니다.
+                if (leftFragmentInstance != null) {
+                    leftFragmentInstance.refreshUnlockedStages();
+                }
             }
         } else {
             fragmentContainer.setVisibility(View.GONE);

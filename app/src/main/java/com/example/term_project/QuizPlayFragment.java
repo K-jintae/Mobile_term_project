@@ -92,7 +92,7 @@ public class QuizPlayFragment extends Fragment {
 
         if (getArguments() != null) {
             currentSubjectId = getArguments().getInt("subject_id", 1);
-            currentDifficultyLevel = getArguments().getString("difficulty_level", "easy");
+            currentDifficultyLevel = getArguments().getString("difficulty_level");
 
             if (currentDifficultyLevel == null || currentDifficultyLevel.trim().isEmpty()) {
                 currentDifficultyLevel = getArguments().getString("difficulty", "easy");
@@ -131,14 +131,19 @@ public class QuizPlayFragment extends Fragment {
         return view;
     }
 
-    // [신규 메서드] 파이어스토어에서 로그인한 유저의 "level" 정보를 안전하게 긁어옵니다.
+    // 파이어스토어에서 로그인한 유저의 "level" 정보를 안전하게 긁어옵니다.
     private void fetchMyActualTierAndLoadQuiz(){
         btnSubmit.setEnabled(false);
         tvQuestion.setText("유저 정보 분석 중입니다 ...");
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if(auth.getCurrentUser() == null){
-            // 로그인 상태가 아닐 때의 방어선 가동
+            myUserLevel = "하수";
+            if (!validateDifficultyWithTier()) {
+                Toast.makeText(getContext(), "접근 권한이 없습니다.", Toast.LENGTH_SHORT).show();
+                closeFragment();
+                return;
+            }
             loadQuestionSet(currentSubjectId, currentDifficultyLevel);
             return;
         }
@@ -149,16 +154,66 @@ public class QuizPlayFragment extends Fragment {
                     if(documentSnapshot.exists()){
                         String lvl = documentSnapshot.getString("level");
                         if(lvl != null && !lvl.isEmpty()){
-                            myUserLevel = lvl; // "하수", "중수", "고수" 실시간 동기화 완료!
+                            myUserLevel = lvl.trim(); // 실시간 등급 동기화
                         }
                     }
-                    // 티어가 정상 확인되면 연쇄적으로 퀴즈 문제셋 로더를 작동시킵니다.
+
+                    // 유저의 진짜 티어와 선택한 난이도를 비교 검증
+                    if (!validateDifficultyWithTier()) {
+                        Toast.makeText(getContext(), "현재 등급(" + myUserLevel + ")으로는 진입할 수 없는 난이도입니다.", Toast.LENGTH_SHORT).show();
+                        closeFragment(); // 권한 미달 시 즉시 이전 화면으로 탈출
+                        return;
+                    }
+
+                    // 검증 통과 시 문제 로드
                     loadQuestionSet(currentSubjectId, currentDifficultyLevel);
                 })
                 .addOnFailureListener(e -> {
-                    // 서버 통신 실패 시에도 퀴즈는 풀 수 있도록 롤백 보장
+                    if (!validateDifficultyWithTier()) {
+                        Toast.makeText(getContext(), "권한 검증 오류로 진입할 수 없습니다.", Toast.LENGTH_SHORT).show();
+                        closeFragment();
+                        return;
+                    }
                     loadQuestionSet(currentSubjectId, currentDifficultyLevel);
                 });
+    }
+
+    /**
+     * [수정 완료] 글로벌 레벨뿐만 아니라 현재 과목의 단계별 클리어 여부도 함께 검사합니다.
+     * 기획하신 순서 규칙에 맞게 조건문을 복합적으로 매칭합니다.
+     */
+    private boolean validateDifficultyWithTier() {
+        if (getContext() == null) {
+            return false;
+        }
+
+        String normalizedDiff = normalizeDifficultyLevel(currentDifficultyLevel);
+
+        // 로컬 클리어 진척도 장부 확인
+        SharedPreferences progressPrefs = getContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+        boolean isEasyClear = progressPrefs.getInt("subject_" + currentSubjectId + "_easy_clear", 0) == 1;
+        boolean isNormalClear = progressPrefs.getInt("subject_" + currentSubjectId + "_normal_clear", 0) == 1;
+
+        if (myUserLevel.contains("하수")) {
+            if ("normal".equals(normalizedDiff)) {
+                return isEasyClear; // 하수 등급이어도 하 난이도를 깼다면 중 난이도 진입 허용
+            }
+            if ("hard".equals(normalizedDiff)) {
+                return isNormalClear; // 하수 등급이어도 중 난이도를 깼다면 상 난이도 진입 허용
+            }
+            return "easy".equals(normalizedDiff);
+
+        } else if (myUserLevel.contains("중수")) {
+            if ("hard".equals(normalizedDiff)) {
+                return isNormalClear; // 중수 등급이어도 중 난이도를 깼다면 상 난이도 진입 허용
+            }
+            return "easy".equals(normalizedDiff) || "normal".equals(normalizedDiff);
+
+        } else if (myUserLevel.contains("고수")) {
+            return true; // 고수 등급은 프리패스
+        }
+
+        return "easy".equals(normalizedDiff);
     }
 
     private void setupCharacterImages() {
@@ -189,60 +244,118 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
-    // 🎯 [QuizPlayFragment.java 내부의 loadQuestionSet 메서드 정석 복구 구역]
+    // 파이어스토어에서 상/중/하 난이도를 싹 다 연쇄적으로 긁어모아 혼합 출제가 가능하도록 리팩토링한 정석 구역
     private void loadQuestionSet(int subjectId, String difficultyLevel) {
         btnSubmit.setEnabled(false);
-        tvQuestion.setText("문제를 불러오는 중입니다...");
+        tvQuestion.setText("모든 난이도의 퀴즈 데이터를 분석 중입니다...");
 
         int dbSubjectId = getFirestoreSubjectId(subjectId);
+        java.util.Map<Integer, QuizQuestion> uniqueQuestions = new java.util.HashMap<>();
 
-        // 💡 앞단 화면에서 자물쇠로 버튼을 원천 봉쇄하므로, 여기서는 사용자가 클릭하고 들어온
-        // 정당한 난이도(difficultyLevel)를 100% 신뢰하고 정석대로 서버에 퀴즈를 요청합니다.
+        // 1단계: 먼저 "easy" 문제를 서버에서 가져옵니다.
         repository.getQuizQuestionsFromFirestore(
                 dbSubjectId,
-                difficultyLevel, // 원본 난이도 그대로 전달
-                10,
+                "easy",
+                50,
                 new QuizRepository.OnQuestionsFetchedListener() {
                     @Override
-                    public void onSuccess(List<QuizQuestion> questions) {
-                        if (!isAdded()) return;
-
-                        if (questions == null || questions.isEmpty()) {
-                            tvQuestion.setText("출제 가능한 문제가 없습니다.");
-                            btnSubmit.setEnabled(false);
-                            return;
+                    public void onSuccess(List<QuizQuestion> easyQuestions) {
+                        if (easyQuestions != null) {
+                            for (QuizQuestion q : easyQuestions) {
+                                uniqueQuestions.put(q.getQuizId(), q);
+                            }
                         }
 
-                        // 순수 정석 포맷으로 돌아온 QuizSelector 백트래킹 엔진 가동
-                        try {
-                            selectedQuestions = QuizSelector.selectQuestions(questions, difficultyLevel, myUserLevel);
-                        } catch(Exception e) {
-                            selectedQuestions = questions;
-                        }
+                        // 2단계: 이어서 "normal" 문제를 연속으로 가져옵니다.
+                        repository.getQuizQuestionsFromFirestore(
+                                dbSubjectId,
+                                "normal",
+                                50,
+                                new QuizRepository.OnQuestionsFetchedListener() {
+                                    @Override
+                                    public void onSuccess(List<QuizQuestion> normalQuestions) {
+                                        if (normalQuestions != null) {
+                                            for (QuizQuestion q : normalQuestions) {
+                                                uniqueQuestions.put(q.getQuizId(), q);
+                                            }
+                                        }
 
-                        if (!isContinueMode) {
-                            currentQuestionIndex = 0;
-                            totalSolvedCount = 0;
-                            correctCount = 0;
-                            earnedGold = 0;
-                        }
+                                        // 3단계: 마지막으로 "hard" 문제까지 한 바구니에 취합합니다.
+                                        repository.getQuizQuestionsFromFirestore(
+                                                dbSubjectId,
+                                                "hard",
+                                                50,
+                                                new QuizRepository.OnQuestionsFetchedListener() {
+                                                    @Override
+                                                    public void onSuccess(List<QuizQuestion> hardQuestions) {
+                                                        if (hardQuestions != null) {
+                                                            for (QuizQuestion q : hardQuestions) {
+                                                                uniqueQuestions.put(q.getQuizId(), q);
+                                                            }
+                                                        }
 
-                        if (currentQuestionIndex < 0) currentQuestionIndex = 0;
-                        if (currentQuestionIndex >= selectedQuestions.size()) {
-                            currentQuestionIndex = selectedQuestions.size() - 1;
-                        }
+                                                        if (!isAdded()) return;
 
-                        showQuestionByIndex();
+                                                        // 전체 난이도가 한곳에 버무려진 최종 리스트 생성
+                                                        List<QuizQuestion> mergedQuestions = new ArrayList<>(uniqueQuestions.values());
+
+                                                        if (mergedQuestions.isEmpty()) {
+                                                            tvQuestion.setText("출제 가능한 문제가 없습니다.");
+                                                            btnSubmit.setEnabled(false);
+                                                            return;
+                                                        }
+
+                                                        // 풍부해진 전체 문제 바구니를 혼합 비율 스케줄러(QuizSelector)에 전달합니다.
+                                                        try {
+                                                            selectedQuestions = QuizSelector.selectQuestions(mergedQuestions, difficultyLevel, myUserLevel);
+                                                        } catch(Exception e) {
+                                                            selectedQuestions = mergedQuestions;
+                                                        }
+
+                                                        if (!isContinueMode) {
+                                                            currentQuestionIndex = 0;
+                                                            totalSolvedCount = 0;
+                                                            correctCount = 0;
+                                                            earnedGold = 0;
+                                                        }
+
+                                                        if (currentQuestionIndex < 0) currentQuestionIndex = 0;
+                                                        if (currentQuestionIndex >= selectedQuestions.size()) {
+                                                            currentQuestionIndex = selectedQuestions.size() - 1;
+                                                        }
+
+                                                        showQuestionByIndex();
+                                                    }
+
+                                                    @Override
+                                                    public void onFailure(Exception e) {
+                                                        handleLoadFailure(e);
+                                                    }
+                                                }
+                                        );
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+                                        handleLoadFailure(e);
+                                    }
+                                }
+                        );
                     }
 
                     @Override
                     public void onFailure(Exception e) {
-                        if (!isAdded()) return;
-                        tvQuestion.setText("출제 가능한 문제가 없습니다...\n" + e.getMessage());
-                        btnSubmit.setEnabled(false);
+                        handleLoadFailure(e);
                     }
                 }
         );
+    }
+
+    // 공통 에러 처리를 담당하는 규격 내 private 헬퍼 메서드 추가
+    private void handleLoadFailure(Exception e) {
+        if (!isAdded()) return;
+        tvQuestion.setText("출제 가능한 문제가 없습니다...\n" + e.getMessage());
+        btnSubmit.setEnabled(false);
     }
 
     private void showQuestionByIndex() {
@@ -550,8 +663,13 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
+        // 로그인한 유저의 고유 UID를 가져오고, 없으면 guest로 처리합니다.
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        String uid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+
+        // 파일 이름 뒤에 _UID를 붙여 계정별 전용 장부를 생성합니다.
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+                .getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
 
         SharedPreferences.Editor editor = prefs.edit();
 
@@ -569,7 +687,68 @@ public class QuizPlayFragment extends Fragment {
 
         if (canUnlockNextStage()) {
             saveNextStageUnlockToFirebase();
+            checkAndUpgradeUserLevel();
         }
+    }
+
+    private void checkAndUpgradeUserLevel() {
+        com.google.firebase.auth.FirebaseAuth mAuth =
+                com.google.firebase.auth.FirebaseAuth.getInstance();
+
+        if (mAuth.getCurrentUser() == null) {
+            return;
+        }
+
+        String uid = mAuth.getCurrentUser().getUid();
+        com.google.firebase.firestore.DocumentReference userRef =
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(uid);
+
+        userRef.update("subject_" + currentSubjectId + "_hard_clear", true)
+                .addOnSuccessListener(aVoid -> {
+                    userRef.get().addOnSuccessListener(documentSnapshot -> {
+                        if (!documentSnapshot.exists()) return;
+
+                        int hardClearCount = 0;
+
+                        for (int i = 1; i <= 8; i++) {
+                            Boolean isHardClear = documentSnapshot.getBoolean("subject_" + i + "_hard_clear");
+                            if (isHardClear != null && isHardClear) {
+                                hardClearCount++;
+                            }
+                        }
+
+                        android.util.Log.d("UserLevelUpgrade", "현재 상 난이도 클리어 과목 총 개수: " + hardClearCount);
+
+                        String currentLevel = documentSnapshot.getString("level");
+                        if (currentLevel == null) currentLevel = "하수";
+                        currentLevel = currentLevel.trim();
+
+                        String nextLevel = currentLevel;
+
+                        if (hardClearCount >= 5) {
+                            if (!"고수".equals(currentLevel)) {
+                                nextLevel = "고수";
+                            }
+                        } else if (hardClearCount >= 3) {
+                            if ("하수".equals(currentLevel)) {
+                                nextLevel = "중수";
+                            }
+                        }
+
+                        if (!nextLevel.equals(currentLevel)) {
+                            final String finalNextLevel = nextLevel;
+                            userRef.update("level", nextLevel)
+                                    .addOnSuccessListener(aVoid2 -> {
+                                        myUserLevel = finalNextLevel;
+                                        if (getContext() != null) {
+                                            Toast.makeText(getContext(), "등급 상승! 이제부터 [" + finalNextLevel + "] 등급입니다! ", Toast.LENGTH_LONG).show();
+                                        }
+                                    });
+                        }
+                    });
+                });
     }
 
     private void saveNextStageUnlockToFirebase() {
@@ -665,6 +844,8 @@ public class QuizPlayFragment extends Fragment {
     }
 
     private void closeFragment() {
+        getParentFragmentManager().setFragmentResult("quiz_refresh_signal", new Bundle());
+
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).closeCurrentFragment();
         }

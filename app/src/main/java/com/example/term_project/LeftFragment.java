@@ -16,6 +16,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 public class LeftFragment extends Fragment {
@@ -41,7 +43,9 @@ public class LeftFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_left, container, false);
 
-        prefs = requireContext().getSharedPreferences("quiz_progress", Context.MODE_PRIVATE);
+        com.google.firebase.auth.FirebaseAuth mAuth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        String uid = (mAuth.getCurrentUser() != null) ? mAuth.getCurrentUser().getUid() : "guest";
+        prefs = requireContext().getSharedPreferences("quiz_progress_" + uid, Context.MODE_PRIVATE);
 
         // fragment_left.xml의 1~9번 과목 카드 연결
         cardQuiz1 = view.findViewById(R.id.cardQuiz1);
@@ -55,7 +59,34 @@ public class LeftFragment extends Fragment {
 
         loadProgressFromFirebase();
 
+        getParentFragmentManager().setFragmentResultListener("quiz_refresh_signal", getViewLifecycleOwner(), (requestKey, result) -> {
+            // 신호가 감지되면 서버에서 최신 해금 장부를 다시 긁어오고 UI를 강제 새로고침합니다.
+            loadProgressFromFirebase();
+        });
+
         return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // [신규 추가] 화면의 뷰가 완전히 결합되는 순간 MainActivity 전역 변수에 내 주소값을 직접 등록합니다.
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).leftFragmentInstance = this;
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        // [신규 추가] 뷰 레이아웃이 파괴되어 나갈 때 메모리 누수 방지를 위해 안전하게 변수를 비워줍니다.
+        if (getActivity() instanceof MainActivity) {
+            if (((MainActivity) getActivity()).leftFragmentInstance == this) {
+                ((MainActivity) getActivity()).leftFragmentInstance = null;
+            }
+        }
     }
 
     @Override
@@ -64,7 +95,7 @@ public class LeftFragment extends Fragment {
         refreshCards();
     }
 
-    /**
+    /*
      * 전체 카드 상태를 갱신한다.
      * XML에 cardQuiz1~cardQuiz9가 있으므로 9개 모두 관리한다.
      */
@@ -79,7 +110,7 @@ public class LeftFragment extends Fragment {
         setupCard(cardQuiz8, 8);
     }
 
-    /**
+    /*
      * 각 카드의 입장 가능 여부를 설정한다.
      * 해금된 카드는 난이도 선택창을 띄우고,
      * 잠긴 카드는 안내 메시지만 띄운다.
@@ -110,57 +141,20 @@ public class LeftFragment extends Fragment {
      * 난이도 선택 다이얼로그를 띄운다.
      */
     private void showDifficultyDialog(int stageId) {
-        final Dialog dialog = new Dialog(requireContext());
+        // 과목 ID를 번들에 담아 새로 만든 난이도 프래그먼트로 전달합니다.
+        Bundle bundle = new Bundle();
+        bundle.putInt("subject_id", stageId);
 
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_difficulty_select, null);
+        QuizDifficultyFragment fragment = new QuizDifficultyFragment();
+        fragment.setArguments(bundle);
 
-        dialog.setContentView(dialogView);
-        dialog.setCancelable(true);
-
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
-
-        Button btnEasy = dialogView.findViewById(R.id.btnEasy);
-        Button btnNormal = dialogView.findViewById(R.id.btnNormal);
-        Button btnHard = dialogView.findViewById(R.id.btnHard);
-        TextView btnCancel = dialogView.findViewById(R.id.btnCancelDifficulty);
-
-        btnEasy.setOnClickListener(v -> {
-            dialog.dismiss();
-            moveToQuizPlay(stageId, "easy");
-        });
-
-        btnNormal.setOnClickListener(v -> {
-            dialog.dismiss();
-            moveToQuizPlay(stageId, "normal");
-        });
-
-        btnHard.setOnClickListener(v -> {
-            dialog.dismiss();
-            moveToQuizPlay(stageId, "hard");
-        });
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-
-        dialog.show();
-
-        Window shownWindow = dialog.getWindow();
-        if (shownWindow != null) {
-            shownWindow.setLayout(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-
-            shownWindow.setDimAmount(0.55f);
-            shownWindow.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            shownWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        // MainActivity의 openFragment를 통해 정식으로 화면을 띄웁니다.
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openFragment(fragment);
         }
     }
 
-    /**
+    /*
      * Firebase에서 해금 정보 가져오기.
      * 현재 XML은 9단계까지 있으므로 2~9단계까지 확인한다.
      */
@@ -201,7 +195,7 @@ public class LeftFragment extends Fragment {
         }
     }
 
-    /**
+    /*
      * 해당 스테이지를 플레이할 수 있는지 확인한다.
      * 1단계는 항상 플레이 가능.
      * 2단계 이상은 stage_N_before_clear 값이 1이어야 가능.
@@ -214,7 +208,7 @@ public class LeftFragment extends Fragment {
         return prefs.getInt("stage_" + stageId + "_before_clear", 0) == 1;
     }
 
-    /**
+    /*
      * 잠긴 카드 클릭 시 안내 메시지.
      */
     private String getLockedMessage(int stageId) {
@@ -225,7 +219,7 @@ public class LeftFragment extends Fragment {
         return (stageId - 1) + "단계를 먼저 클리어해야 합니다.";
     }
 
-    /**
+    /*
      * 퀴즈 화면으로 이동한다.
      * subject_id와 difficulty_level을 같이 넘긴다.
      */
@@ -240,6 +234,18 @@ public class LeftFragment extends Fragment {
 
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).openFragment(fragment);
+        }
+    }
+
+    /*
+     * 퀴즈가 끝나고 화면 가림막이 걷힐 때 MainActivity에 의해 다이렉트로 강제 호출되는 메서드
+     */
+    public void refreshUnlockedStages() {
+        if (getContext() != null) {
+            // 로컬에 누적된 스테이지 클리어 정보를 UI 카드에 반영합니다.
+            refreshCards();
+            // 파이어베이스 최신 해금 장부도 다시 한번 백그라운드 동기화합니다.
+            loadProgressFromFirebase();
         }
     }
 }

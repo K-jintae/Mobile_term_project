@@ -634,7 +634,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
 
                         if (!excludedUids.contains(uid)) {
                             excludedUids.add(uid);
-                            addRecommendedUserToList(uid, "비슷한 레벨의 친구");
+                            addRecommendedUserToList(uid, "추천 친구");
                         }
                     }
 
