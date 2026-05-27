@@ -33,7 +33,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class FriendActivity extends AppCompatActivity implements FriendAdapter.OnFriendActionListener {
+public class FriendActivity extends AppCompatActivity
+        implements FriendAdapter.OnFriendActionListener,
+        BattleRequestDialogFragment.OnBattleRequestConfirmListener {
 
     private EditText editSearchEmail;
     private Button btnSearchFriend;
@@ -87,6 +89,28 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         battleRequestManager.listenAcceptedOutgoingBattleRequests();
     }
 
+    @Override
+    public void onBattleRequestConfirm(FriendItem targetFriend, int betGold, int subjectNo, String difficulty) {
+        if (targetFriend == null || targetFriend.getUid() == null || targetFriend.getUid().isEmpty()) {
+            Toast.makeText(this, "대전 상대 정보가 올바르지 않습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        /*
+         * 기존 BattleRequestManager에 실제 요청 전송 메서드가 있으면
+         * 아래 Toast 부분을 그 메서드 호출로 바꾸면 됨.
+         *
+         * 예시:
+         * battleRequestManager.sendBattleRequest(targetFriend, betGold, subjectNo, difficulty);
+         */
+
+        Toast.makeText(
+                this,
+                targetFriend.getName() + "님에게 대전 신청을 보냈습니다.",
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
     private void bindViews() {
         editSearchEmail = findViewById(R.id.edit_search_email);
         btnSearchFriend = findViewById(R.id.btn_search_friend);
@@ -100,11 +124,18 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         adapter = new FriendAdapter(
                 friendList,
                 this,
-                friendItem -> battleRequestManager.showBattleRequestDialog(friendItem)
+                this::showBattleRequestDialog
         );
 
         recyclerFriends.setLayoutManager(new LinearLayoutManager(this));
         recyclerFriends.setAdapter(adapter);
+    }
+
+    private void showBattleRequestDialog(FriendItem friendItem) {
+        BattleRequestDialogFragment dialog =
+                BattleRequestDialogFragment.newInstance(friendItem);
+
+        dialog.show(getSupportFragmentManager(), "BattleRequestDialog");
     }
 
     private void setupButtons() {

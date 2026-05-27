@@ -7,6 +7,12 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+
 import androidx.appcompat.app.AlertDialog;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -79,88 +85,60 @@ public class BattleRequestManager {
             return;
         }
 
-        LinearLayout layout = createBattleInputLayout();
-
-        EditText etBetGold = layout.findViewWithTag("betGold");
-        EditText etSubjectId = layout.findViewWithTag("subjectId");
-        EditText etDifficulty = layout.findViewWithTag("difficulty");
-
         dismissCurrentDialog();
 
+        View dialogView = LayoutInflater.from(activity)
+                .inflate(R.layout.dialog_battle_request, null, false);
+
+        TextView tvTitle = dialogView.findViewById(R.id.tvBattleDialogTitle);
+        TextView tvGold = dialogView.findViewById(R.id.tvBattleGold);
+        TextView tvSubject = dialogView.findViewById(R.id.tvBattleSubject);
+        TextView tvDifficulty = dialogView.findViewById(R.id.tvBattleDifficulty);
+        TextView btnCancel = dialogView.findViewById(R.id.btnBattleCancel);
+        TextView btnApply = dialogView.findViewById(R.id.btnBattleApply);
+
+        String targetName = friendItem.getUserId();
+
+        if (targetName == null || targetName.trim().isEmpty()) {
+            targetName = friendItem.getName();
+        }
+
+        if (targetName == null || targetName.trim().isEmpty()) {
+            targetName = "상대";
+        }
+
+        tvTitle.setText(targetName + "님에게 대전 신청");
+        tvGold.setText("베팅 골드 기본값: " + DEFAULT_BET_GOLD);
+        tvSubject.setText("과목 번호 기본값: " + DEFAULT_SUBJECT_ID);
+        tvDifficulty.setText("난이도 기본값: " + DEFAULT_DIFFICULTY);
+
         currentDialog = new AlertDialog.Builder(activity)
-                .setTitle(friendItem.getUserId() + "님에게 대전 신청")
-                .setMessage("10문제 동시 턴제 대전입니다.\n각 문제 제한 시간은 10초입니다.")
-                .setView(layout)
-                .setNegativeButton("취소", null)
-                .setPositiveButton("신청", (dialog, which) -> {
-                    BattleRequestInput input = parseBattleInput(etBetGold, etSubjectId, etDifficulty);
-
-                    if (input == null) {
-                        return;
-                    }
-
-                    createBattleRequest(friendItem, input);
-                })
+                .setView(dialogView)
                 .create();
+
+        btnCancel.setOnClickListener(v -> dismissCurrentDialog());
+
+        btnApply.setOnClickListener(v -> {
+            BattleRequestInput input = new BattleRequestInput(
+                    DEFAULT_BET_GOLD,
+                    DEFAULT_SUBJECT_ID,
+                    DEFAULT_DIFFICULTY
+            );
+
+            dismissCurrentDialog();
+            createBattleRequest(friendItem, input);
+        });
+
+        currentDialog.setOnShowListener(dialog -> {
+            if (currentDialog.getWindow() != null) {
+                currentDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            }
+        });
 
         currentDialog.show();
     }
 
-    private LinearLayout createBattleInputLayout() {
-        LinearLayout layout = new LinearLayout(activity);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(48, 24, 48, 8);
 
-        EditText etBetGold = new EditText(activity);
-        etBetGold.setTag("betGold");
-        etBetGold.setHint("베팅 골드 기본값: 100");
-        etBetGold.setInputType(InputType.TYPE_CLASS_NUMBER);
-        layout.addView(etBetGold);
-
-        EditText etSubjectId = new EditText(activity);
-        etSubjectId.setTag("subjectId");
-        etSubjectId.setHint("과목 번호 기본값: 1");
-        etSubjectId.setInputType(InputType.TYPE_CLASS_NUMBER);
-        layout.addView(etSubjectId);
-
-        EditText etDifficulty = new EditText(activity);
-        etDifficulty.setTag("difficulty");
-        etDifficulty.setHint("난이도 기본값: 상");
-        etDifficulty.setSingleLine(true);
-        layout.addView(etDifficulty);
-
-        return layout;
-    }
-
-    private BattleRequestInput parseBattleInput(
-            EditText etBetGold,
-            EditText etSubjectId,
-            EditText etDifficulty
-    ) {
-        String betGoldText = etBetGold.getText().toString().trim();
-        String subjectIdText = etSubjectId.getText().toString().trim();
-        String difficultyText = etDifficulty.getText().toString().trim();
-
-        int betGold;
-        int subjectId;
-        String difficulty;
-
-        try {
-            betGold = betGoldText.isEmpty() ? DEFAULT_BET_GOLD : Integer.parseInt(betGoldText);
-            subjectId = subjectIdText.isEmpty() ? DEFAULT_SUBJECT_ID : Integer.parseInt(subjectIdText);
-            difficulty = difficultyText.isEmpty() ? DEFAULT_DIFFICULTY : difficultyText;
-        } catch (Exception e) {
-            Toast.makeText(activity, "입력값을 다시 확인하세요.", Toast.LENGTH_SHORT).show();
-            return null;
-        }
-
-        if (betGold <= 0) {
-            Toast.makeText(activity, "베팅 골드는 1 이상이어야 합니다.", Toast.LENGTH_SHORT).show();
-            return null;
-        }
-
-        return new BattleRequestInput(betGold, subjectId, difficulty);
-    }
 
     private void createBattleRequest(FriendItem friendItem, BattleRequestInput input) {
         String myUid = getMyUid();
