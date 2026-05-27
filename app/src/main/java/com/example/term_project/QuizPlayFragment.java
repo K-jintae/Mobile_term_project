@@ -138,7 +138,12 @@ public class QuizPlayFragment extends Fragment {
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if(auth.getCurrentUser() == null){
-            // 로그인 상태가 아닐 때의 방어선 가동
+            myUserLevel = "하수";
+            if (!validateDifficultyWithTier()) {
+                Toast.makeText(getContext(), "접근 권한이 없습니다.", Toast.LENGTH_SHORT).show();
+                closeFragment();
+                return;
+            }
             loadQuestionSet(currentSubjectId, currentDifficultyLevel);
             return;
         }
@@ -149,16 +154,48 @@ public class QuizPlayFragment extends Fragment {
                     if(documentSnapshot.exists()){
                         String lvl = documentSnapshot.getString("level");
                         if(lvl != null && !lvl.isEmpty()){
-                            myUserLevel = lvl; // "하수", "중수", "고수" 실시간 동기화 완료!
+                            myUserLevel = lvl.trim(); // 실시간 등급 동기화
                         }
                     }
-                    // 티어가 정상 확인되면 연쇄적으로 퀴즈 문제셋 로더를 작동시킵니다.
+
+                    // [최종 방어선] 유저의 진짜 티어와 선택한 난이도를 비교 검증
+                    if (!validateDifficultyWithTier()) {
+                        Toast.makeText(getContext(), "현재 등급(" + myUserLevel + ")으로는 진입할 수 없는 난이도입니다.", Toast.LENGTH_SHORT).show();
+                        closeFragment(); // 권한 미달 시 즉시 이전 화면으로 탈출
+                        return;
+                    }
+
+                    // 검증 통과 시 문제 로드
                     loadQuestionSet(currentSubjectId, currentDifficultyLevel);
                 })
                 .addOnFailureListener(e -> {
-                    // 서버 통신 실패 시에도 퀴즈는 풀 수 있도록 롤백 보장
+                    if (!validateDifficultyWithTier()) {
+                        Toast.makeText(getContext(), "권한 검증 오류로 진입할 수 없습니다.", Toast.LENGTH_SHORT).show();
+                        closeFragment();
+                        return;
+                    }
                     loadQuestionSet(currentSubjectId, currentDifficultyLevel);
                 });
+    }
+
+    private boolean validateDifficultyWithTier() {
+        // 기존에 구현된 안전한 난이도 치환 활용 ("easy", "normal", "hard")
+        String normalizedDiff = normalizeDifficultyLevel(currentDifficultyLevel);
+
+        if (myUserLevel.contains("하수")) {
+            // 하수는 오직 하(easy)만 허용
+            return "easy".equals(normalizedDiff);
+
+        } else if (myUserLevel.contains("중수")) {
+            // 중수는 하(easy), 중(normal)까지 허용
+            return "easy".equals(normalizedDiff) || "normal".equals(normalizedDiff);
+
+        } else if (myUserLevel.contains("고수")) {
+            // 고수는 프리패스
+            return true;
+        }
+
+        return "easy".equals(normalizedDiff);
     }
 
     private void setupCharacterImages() {
@@ -189,14 +226,14 @@ public class QuizPlayFragment extends Fragment {
         });
     }
 
-    // 🎯 [QuizPlayFragment.java 내부의 loadQuestionSet 메서드 정석 복구 구역]
+    // [QuizPlayFragment.java 내부의 loadQuestionSet 메서드 정석 복구 구역]
     private void loadQuestionSet(int subjectId, String difficultyLevel) {
         btnSubmit.setEnabled(false);
         tvQuestion.setText("문제를 불러오는 중입니다...");
 
         int dbSubjectId = getFirestoreSubjectId(subjectId);
 
-        // 💡 앞단 화면에서 자물쇠로 버튼을 원천 봉쇄하므로, 여기서는 사용자가 클릭하고 들어온
+        // 앞단 화면에서 자물쇠로 버튼을 원천 봉쇄하므로, 여기서는 사용자가 클릭하고 들어온
         // 정당한 난이도(difficultyLevel)를 100% 신뢰하고 정석대로 서버에 퀴즈를 요청합니다.
         repository.getQuizQuestionsFromFirestore(
                 dbSubjectId,
@@ -567,9 +604,84 @@ public class QuizPlayFragment extends Fragment {
 
         editor.apply();
 
+        // 상 난이도의 문제를 목표 점수 이상으로 완벽하게 풀어냈을 때 작동합니다.
         if (canUnlockNextStage()) {
             saveNextStageUnlockToFirebase();
+
+            // [신규 추가] 상 난이도 클리어 과목 개수를 판정하여 등급업을 심사합니다.
+            checkAndUpgradeUserLevel();
         }
+    }
+
+    /*
+     * 상 난이도 클리어 과목 개수(3개 이상 중수 / 5개 이상 고수)를 판정하여 레벨업을 진행하는 메서드
+     */
+    private void checkAndUpgradeUserLevel() {
+        com.google.firebase.auth.FirebaseAuth mAuth =
+                com.google.firebase.auth.FirebaseAuth.getInstance();
+
+        if (mAuth.getCurrentUser() == null) {
+            return;
+        }
+
+        String uid = mAuth.getCurrentUser().getUid();
+        com.google.firebase.firestore.DocumentReference userRef =
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(uid);
+
+        // 현재 과목의 상 난이도 클리어 도장을 파이어스토어 장부에 기록합니다.
+        userRef.update("subject_" + currentSubjectId + "_hard_clear", true)
+                .addOnSuccessListener(aVoid -> {
+
+                    // 장부 기록 성공 직후, 유저 문서를 다시 한 번 읽어와 전체 과목 상태를 카운트합니다.
+                    userRef.get().addOnSuccessListener(documentSnapshot -> {
+                        if (!documentSnapshot.exists()) return;
+
+                        int hardClearCount = 0;
+
+                        // 현재 등록되어 있는 1번부터 8번 과목까지 순회하며 상 난이도가 풀렸는지 체크합니다.
+                        for (int i = 1; i <= 8; i++) {
+                            Boolean isHardClear = documentSnapshot.getBoolean("subject_" + i + "_hard_clear");
+                            if (isHardClear != null && isHardClear) {
+                                hardClearCount++;
+                            }
+                        }
+
+                        android.util.Log.d("UserLevelUpgrade", "현재 상 난이도 클리어 과목 총 개수: " + hardClearCount);
+
+                        String currentLevel = documentSnapshot.getString("level");
+                        if (currentLevel == null) currentLevel = "하수";
+                        currentLevel = currentLevel.trim();
+
+                        String nextLevel = currentLevel;
+
+                        // 기획하신 레벨업 조건 실시간 대입 알고리즘 구역
+                        if (hardClearCount >= 5) {
+                            // 상 난이도 5개 이상 클리어 시 최고 존엄 '고수'로 등급 상승
+                            if (!"고수".equals(currentLevel)) {
+                                nextLevel = "고수";
+                            }
+                        } else if (hardClearCount >= 3) {
+                            // 상 난이도 3개 이상 클리어 시 '하수'에서 '중수'로 등급 상승
+                            if ("하수".equals(currentLevel)) {
+                                nextLevel = "중수";
+                            }
+                        }
+
+                        // 조건 조율 결과 실제 등급 변화가 일어났을 때만 파이어스토어 최종 장부를 업데이트합니다.
+                        if (!nextLevel.equals(currentLevel)) {
+                            final String finalNextLevel = nextLevel;
+                            userRef.update("level", nextLevel)
+                                    .addOnSuccessListener(aVoid2 -> {
+                                        myUserLevel = finalNextLevel; // 내 로컬 변수도 즉시 업데이트하여 싱크를 맞춥니다.
+                                        if (getContext() != null) {
+                                            Toast.makeText(getContext(), "🎉 등급 상승! 이제부터 [" + finalNextLevel + "] 등급입니다! 🎉", Toast.LENGTH_LONG).show();
+                                        }
+                                    });
+                        }
+                    });
+                });
     }
 
     private void saveNextStageUnlockToFirebase() {
@@ -665,6 +777,9 @@ public class QuizPlayFragment extends Fragment {
     }
 
     private void closeFragment() {
+        // [신규 추가] 뒤에서 대기 중인 LeftFragment에게 화면을 갱신하라는 무전 신호를 발송합니다.
+        getParentFragmentManager().setFragmentResult("quiz_refresh_signal", new Bundle());
+
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).closeCurrentFragment();
         }

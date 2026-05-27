@@ -1,55 +1,109 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/layoutDifficulty"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp"
-    android:background="#222222"> <TextView
-    android:id="@+id/tvDifficultyTitle"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="난이도를 선택하세요"
-    android:textSize="24sp"
-    android:textStyle="bold"
-    android:textColor="#FFFFFF"
-    android:layout_marginBottom="32dp" />
+    android:background="#B3121212"
+    android:padding="24dp">
 
-    <Button
-        android:id="@+id/btnEasy"
-        android:layout_width="220dp"
-        android:layout_height="60dp"
-        android:text="하"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#4CAF50"
-        app:cornerRadius="12dp" />
-    <Button
-        android:id="@+id/btnNormal"
-        android:layout_width="220dp"
-        android:layout_height="60dp"
-        android:text="중"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#FF9800"
-        app:cornerRadius="12dp" />
+    <androidx.cardview.widget.CardView
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        app:cardBackgroundColor="#FFFDF3"
+        app:cardCornerRadius="36dp"
+        app:cardElevation="8dp">
 
-    <Button
-        android:id="@+id/btnHard"
-        android:layout_width="220dp"
-        android:layout_height="60dp"
-        android:text="상"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#E91E63"
-        app:cornerRadius="12dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="36dp"
+            android:paddingBottom="32dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
 
-</LinearLayout>
+            <TextView
+                android:id="@+id/tvDifficultyTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="난이도 선택"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="#4A3B32" />
+
+            <TextView
+                android:id="@+id/tvDifficultySubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="풀고 싶은 문제 난이도를 선택하세요"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#8A7B71"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="32dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEasy"
+                android:layout_width="145dp"
+                android:layout_height="58dp"
+                android:text="하"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#4A3B32"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#DCD3C9"
+                app:strokeColor="#4A3B32"
+                app:strokeWidth="2dp"
+                app:cornerRadius="29dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNormal"
+                android:layout_width="145dp"
+                android:layout_height="58dp"
+                android:text="중"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#4A3B32"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#DCD3C9"
+                app:strokeColor="#4A3B32"
+                app:strokeWidth="2dp"
+                app:cornerRadius="29dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnHard"
+                android:layout_width="145dp"
+                android:layout_height="58dp"
+                android:text="상"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#4A3B32"
+                android:layout_marginBottom="32dp"
+                android:backgroundTint="#DCD3C9"
+                app:strokeColor="#4A3B32"
+                app:strokeWidth="2dp"
+                app:cornerRadius="29dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <TextView
+                android:id="@+id/tvClose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="닫기"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#4A3B32"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>
