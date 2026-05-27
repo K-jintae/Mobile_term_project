@@ -96,19 +96,16 @@ public class FriendActivity extends AppCompatActivity
             return;
         }
 
-        /*
-         * 기존 BattleRequestManager에 실제 요청 전송 메서드가 있으면
-         * 아래 Toast 부분을 그 메서드 호출로 바꾸면 됨.
-         *
-         * 예시:
-         * battleRequestManager.sendBattleRequest(targetFriend, betGold, subjectNo, difficulty);
-         */
+        if (battleRequestManager == null) {
+            battleRequestManager = new BattleRequestManager(this);
+        }
 
-        Toast.makeText(
-                this,
-                targetFriend.getName() + "님에게 대전 신청을 보냈습니다.",
-                Toast.LENGTH_SHORT
-        ).show();
+        battleRequestManager.sendBattleRequest(
+                targetFriend,
+                betGold,
+                subjectNo,
+                difficulty
+        );
     }
 
     private void bindViews() {

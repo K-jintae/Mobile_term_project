@@ -81,15 +81,13 @@ public class BattleRequestDialogFragment extends DialogFragment {
 
         TextView tvTitle = view.findViewById(R.id.tvBattleDialogTitle);
         TextView tvGold = view.findViewById(R.id.tvBattleGold);
-        TextView tvSubject = view.findViewById(R.id.tvBattleSubject);
-        TextView tvDifficulty = view.findViewById(R.id.tvBattleDifficulty);
+
         TextView btnCancel = view.findViewById(R.id.btnBattleCancel);
         TextView btnApply = view.findViewById(R.id.btnBattleApply);
 
         tvTitle.setText(targetFriend.getName() + "님에게 대전 신청");
         tvGold.setText("베팅 골드 기본값: " + defaultBetGold);
-        tvSubject.setText("과목 번호 기본값: " + defaultSubjectNo);
-        tvDifficulty.setText("난이도 기본값: " + defaultDifficulty);
+
 
         btnCancel.setOnClickListener(v -> dismiss());
 

@@ -12,7 +12,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -22,6 +21,7 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +37,7 @@ public class BattleQuizActivity extends AppCompatActivity {
     private TextView tvMyScore;
     private TextView tvOpponentScore;
     private TextView tvOpponentStatus;
-
+    private boolean battleExitHandled = false;
     private Button btnOption1;
     private Button btnOption2;
     private Button btnOption3;
@@ -72,7 +72,13 @@ public class BattleQuizActivity extends AppCompatActivity {
     private static final int CORRECT_COLOR = Color.parseColor("#A5D6A7");
     private static final int MY_CHOICE_COLOR = Color.parseColor("#90CAF9");
     private static final int OPPONENT_CHOICE_COLOR = Color.parseColor("#FFCC80");
-    private static final int WRONG_COLOR = Color.parseColor("#EF9A9A");
+
+    // 대전용: 과목과 난이도를 섞어서 출제
+    // 실제 DB 과목 번호가 1~7이 아니면 여기만 수정
+    private static final int[] BATTLE_SUBJECT_IDS = {1, 2, 3, 4, 5, 6, 7};
+
+    // 기존 LevelTestActivity에서 easy / normal / hard를 사용하고 있으므로 이 기준 사용
+    private static final String[] BATTLE_DIFFICULTIES = {"easy", "normal", "hard"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,9 +136,33 @@ public class BattleQuizActivity extends AppCompatActivity {
         btnOption4.setOnClickListener(v -> submitAnswer(3));
 
         btnExitBattle.setOnClickListener(v -> {
-            Toast.makeText(this, "대전 중 나가면 현재 화면만 종료됩니다.", Toast.LENGTH_SHORT).show();
-            finish();
+            leaveBattleRoomAndFinish();
         });
+    }
+
+    private void leaveBattleRoomAndFinish() {
+        if (battleExitHandled) {
+            return;
+        }
+
+        battleExitHandled = true;
+
+        if (roomRef == null || myUid == null) {
+            finish();
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", "cancelled");
+        updates.put("roundState", "cancelled");
+        updates.put("leftUid", myUid);
+        updates.put("leftAt", System.currentTimeMillis());
+
+        roomRef.updateChildren(updates)
+                .addOnCompleteListener(task -> {
+                    Toast.makeText(this, "대전을 나갔습니다.", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
     }
 
     private void listenBattleRoom() {
@@ -160,23 +190,44 @@ public class BattleQuizActivity extends AppCompatActivity {
         playerB = room.child("playerB").getValue(String.class);
         hostUid = room.child("hostUid").getValue(String.class);
 
-        if (playerA == null || playerB == null || hostUid == null) {
-            return;
-        }
-
-        isHost = myUid.equals(hostUid);
-        opponentUid = myUid.equals(playerA) ? playerB : playerA;
-
         String status = getStringValue(room, "status", "loading");
         String roundState = getStringValue(room, "roundState", "loading");
 
-        int subjectId = getIntValue(room, "subjectId", 1);
-        String difficulty = getStringValue(room, "difficulty", "상");
+        // 방 기본 정보가 아직 준비되지 않은 경우
+        if (playerA == null || playerB == null || hostUid == null) {
+            showLoadingState("대전방 정보를 불러오는 중입니다.");
+            return;
+        }
+
+        // 상대방 또는 내가 나가서 방이 취소된 경우
+        if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+            String leftUid = room.child("leftUid").getValue(String.class);
+
+            stopTimer();
+            setOptionButtonsEnabled(false);
+
+            if (leftUid != null && !leftUid.equals(myUid)) {
+                Toast.makeText(this, "상대방이 대전에서 나갔습니다.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "대전이 종료되었습니다.", Toast.LENGTH_SHORT).show();
+            }
+
+            finish();
+            return;
+        }
+
+        isHost = myUid != null && myUid.equals(hostUid);
+        opponentUid = myUid != null && myUid.equals(playerA) ? playerB : playerA;
+
         int questionCount = getIntValue(room, "questionCount", 10);
 
-        if (isHost && ("loading".equals(status) || "loading".equals(roundState)) && !questionLoadRequested) {
+        // 호스트만 문제를 불러와서 방에 저장
+        if (isHost
+                && ("loading".equals(status) || "loading".equals(roundState))
+                && !questionLoadRequested) {
+
             questionLoadRequested = true;
-            loadQuestionsAndStart(subjectId, difficulty, questionCount);
+            loadMixedQuestionsAndStart(questionCount);
             showLoadingState("문제를 불러오는 중입니다.");
             return;
         }
@@ -201,6 +252,7 @@ public class BattleQuizActivity extends AppCompatActivity {
 
         if ("answering".equals(roundState)) {
             renderAnswering(room, roundIndex);
+
         } else if ("revealing".equals(roundState)) {
             renderRevealing(room, roundIndex);
 
@@ -210,13 +262,14 @@ public class BattleQuizActivity extends AppCompatActivity {
 
                 handler.postDelayed(() -> advanceToNextRound(roundIndex), revealDurationMs);
             }
+
         } else if ("finished".equals(roundState) || "finished".equals(status)) {
             renderFinished(room);
+
         } else {
             showLoadingState("대전 상태를 준비하는 중입니다.");
         }
     }
-
     private void showLoadingState(String message) {
         tvBattleTitle.setText("실시간 퀴즈 대전");
         tvTimer.setText("-");
@@ -229,39 +282,72 @@ public class BattleQuizActivity extends AppCompatActivity {
         resetButtonColors();
     }
 
-    private void loadQuestionsAndStart(int subjectId, String difficulty, int questionCount) {
+    private void loadMixedQuestionsAndStart(int questionCount) {
         QuizRepository repository = new QuizRepository();
 
-        repository.getQuizQuestionsFromFirestore(subjectId, difficulty, questionCount, new QuizRepository.OnQuestionsFetchedListener() {
-            @Override
-            public void onSuccess(List<QuizQuestion> fetchedQuestions) {
-                if (fetchedQuestions == null || fetchedQuestions.isEmpty()) {
-                    Toast.makeText(BattleQuizActivity.this, "출제 가능한 문제가 없습니다.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+        ArrayList<QuizQuestion> allQuestions = new ArrayList<>();
+        final int[] pendingCount = {BATTLE_SUBJECT_IDS.length * BATTLE_DIFFICULTIES.length};
 
-                Map<String, Object> updates = new HashMap<>();
-                Map<String, Object> questionMap = new HashMap<>();
+        for (int subjectId : BATTLE_SUBJECT_IDS) {
+            for (String difficulty : BATTLE_DIFFICULTIES) {
+                repository.getQuizQuestionsFromFirestore(
+                        subjectId,
+                        difficulty,
+                        100,
+                        new QuizRepository.OnQuestionsFetchedListener() {
+                            @Override
+                            public void onSuccess(List<QuizQuestion> fetchedQuestions) {
+                                if (fetchedQuestions != null) {
+                                    allQuestions.addAll(fetchedQuestions);
+                                }
 
-                for (int i = 0; i < fetchedQuestions.size(); i++) {
-                    questionMap.put(String.valueOf(i), fetchedQuestions.get(i).toBattleMap());
-                }
+                                pendingCount[0]--;
 
-                updates.put("questions", questionMap);
-                updates.put("questionCount", fetchedQuestions.size());
-                updates.put("status", "playing");
-                updates.put("roundState", "answering");
-                updates.put("roundIndex", 0);
-                updates.put("roundStartTime", System.currentTimeMillis());
+                                if (pendingCount[0] == 0) {
+                                    saveMixedQuestionsToRoom(allQuestions, questionCount);
+                                }
+                            }
 
-                roomRef.updateChildren(updates);
+                            @Override
+                            public void onFailure(Exception e) {
+                                // 일부 과목/난이도 조회 실패는 무시하고 나머지 문제로 진행
+                                pendingCount[0]--;
+
+                                if (pendingCount[0] == 0) {
+                                    saveMixedQuestionsToRoom(allQuestions, questionCount);
+                                }
+                            }
+                        }
+                );
             }
+        }
+    }
 
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(BattleQuizActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+    private void saveMixedQuestionsToRoom(List<QuizQuestion> allQuestions, int questionCount) {
+        if (allQuestions == null || allQuestions.isEmpty()) {
+            Toast.makeText(BattleQuizActivity.this, "출제 가능한 문제가 없습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Collections.shuffle(allQuestions);
+
+        int finalCount = Math.min(questionCount, allQuestions.size());
+
+        Map<String, Object> updates = new HashMap<>();
+        Map<String, Object> questionMap = new HashMap<>();
+
+        for (int i = 0; i < finalCount; i++) {
+            questionMap.put(String.valueOf(i), allQuestions.get(i).toBattleMap());
+        }
+
+        updates.put("questions", questionMap);
+        updates.put("questionCount", finalCount);
+        updates.put("status", "playing");
+        updates.put("roundState", "answering");
+        updates.put("roundIndex", 0);
+        updates.put("roundStartTime", System.currentTimeMillis());
+
+        roomRef.updateChildren(updates);
     }
 
     private void loadQuestionsFromSnapshot(DataSnapshot room) {
@@ -278,6 +364,45 @@ public class BattleQuizActivity extends AppCompatActivity {
         }
     }
 
+    private QuizQuestion snapshotToQuizQuestion(DataSnapshot snapshot) {
+        if (snapshot == null || !snapshot.exists()) {
+            return null;
+        }
+
+        Long quizIdLong = snapshot.child("quizId").getValue(Long.class);
+        String questionText = snapshot.child("question").getValue(String.class);
+        Long correctIndexLong = snapshot.child("correctAnswerIndex").getValue(Long.class);
+        String difficultyLevel = snapshot.child("difficultyLevel").getValue(String.class);
+
+        if (questionText == null) {
+            return null;
+        }
+
+        int quizId = quizIdLong != null ? quizIdLong.intValue() : 0;
+        int correctAnswerIndex = correctIndexLong != null ? correctIndexLong.intValue() : 0;
+
+        ArrayList<String> optionList = new ArrayList<>();
+
+        DataSnapshot optionsSnap = snapshot.child("options");
+        for (DataSnapshot optionChild : optionsSnap.getChildren()) {
+            String option = optionChild.getValue(String.class);
+
+            if (option != null) {
+                optionList.add(option);
+            }
+        }
+
+        String[] options = optionList.toArray(new String[0]);
+
+        return new QuizQuestion(
+                quizId,
+                questionText,
+                options,
+                correctAnswerIndex,
+                difficultyLevel
+        );
+    }
+
     private void renderAnswering(DataSnapshot room, int roundIndex) {
         if (roundIndex < 0 || roundIndex >= questions.size()) {
             return;
@@ -292,10 +417,24 @@ public class BattleQuizActivity extends AppCompatActivity {
         setOptions(question);
         resetButtonColors();
 
+        int myChoice = getSelectedIndex(room, roundIndex, myUid);
         boolean opponentAnswered = hasOpponentAnswer(room, roundIndex);
-        tvOpponentStatus.setText(opponentAnswered ? "상대: 선택 완료" : "상대: 선택 중");
 
-        setOptionButtonsEnabled(!alreadyAnsweredThisRound);
+        if (myChoice >= 0) {
+            showMySelectedAnswer(myChoice);
+        }
+
+        if (myChoice >= 0 && opponentAnswered) {
+            tvOpponentStatus.setText("나: 선택 완료 / 상대: 선택 완료");
+        } else if (myChoice >= 0) {
+            tvOpponentStatus.setText("나: 선택 완료 / 상대: 선택 중");
+        } else if (opponentAnswered) {
+            tvOpponentStatus.setText("나: 선택 중 / 상대: 선택 완료");
+        } else {
+            tvOpponentStatus.setText("나: 선택 중 / 상대: 선택 중");
+        }
+
+        setOptionButtonsEnabled(myChoice < 0);
 
         long roundStartTime = getLongValue(room, "roundStartTime", System.currentTimeMillis());
         long roundDurationMs = getLongValue(room, "roundDurationMs", 10_000L);
@@ -418,6 +557,25 @@ public class BattleQuizActivity extends AppCompatActivity {
         }
     }
 
+    private void showMySelectedAnswer(int selectedIndex) {
+        Button[] buttons = getOptionButtons();
+
+        for (Button button : buttons) {
+            button.setBackgroundColor(DEFAULT_BUTTON_COLOR);
+            button.setTextColor(Color.BLACK);
+        }
+
+        if (selectedIndex >= 0 && selectedIndex < buttons.length) {
+            buttons[selectedIndex].setBackgroundColor(MY_CHOICE_COLOR);
+            buttons[selectedIndex].setTextColor(Color.BLACK);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        leaveBattleRoomAndFinish();
+    }
+
     private void submitAnswer(int selectedIndex) {
         if (alreadyAnsweredThisRound) {
             return;
@@ -439,6 +597,12 @@ public class BattleQuizActivity extends AppCompatActivity {
             if (hasMyAnswer(room, roundIndex)) {
                 alreadyAnsweredThisRound = true;
                 setOptionButtonsEnabled(false);
+
+                int myChoice = getSelectedIndex(room, roundIndex, myUid);
+                if (myChoice >= 0) {
+                    showMySelectedAnswer(myChoice);
+                }
+
                 return;
             }
 
@@ -457,7 +621,9 @@ public class BattleQuizActivity extends AppCompatActivity {
                     .setValue(answer)
                     .addOnSuccessListener(unused -> {
                         alreadyAnsweredThisRound = true;
+                        showMySelectedAnswer(selectedIndex);
                         setOptionButtonsEnabled(false);
+                        tvOpponentStatus.setText("나: 선택 완료 / 상대 선택 대기 중");
                     });
         });
     }
@@ -746,44 +912,5 @@ public class BattleQuizActivity extends AppCompatActivity {
         super.onDestroy();
         stopTimer();
         handler.removeCallbacksAndMessages(null);
-    }
-
-    private QuizQuestion snapshotToQuizQuestion(DataSnapshot snapshot) {
-        if (snapshot == null || !snapshot.exists()) {
-            return null;
-        }
-
-        Long quizIdLong = snapshot.child("quizId").getValue(Long.class);
-        String questionText = snapshot.child("question").getValue(String.class);
-        Long correctIndexLong = snapshot.child("correctAnswerIndex").getValue(Long.class);
-        String difficultyLevel = snapshot.child("difficultyLevel").getValue(String.class);
-
-        if (questionText == null) {
-            return null;
-        }
-
-        int quizId = quizIdLong != null ? quizIdLong.intValue() : 0;
-        int correctAnswerIndex = correctIndexLong != null ? correctIndexLong.intValue() : 0;
-
-        ArrayList<String> optionList = new ArrayList<>();
-
-        DataSnapshot optionsSnap = snapshot.child("options");
-        for (DataSnapshot optionChild : optionsSnap.getChildren()) {
-            String option = optionChild.getValue(String.class);
-
-            if (option != null) {
-                optionList.add(option);
-            }
-        }
-
-        String[] options = optionList.toArray(new String[0]);
-
-        return new QuizQuestion(
-                quizId,
-                questionText,
-                options,
-                correctAnswerIndex,
-                difficultyLevel
-        );
     }
 }

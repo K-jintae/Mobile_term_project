@@ -33,8 +33,8 @@ public class BattleRequestManager {
     private final FirebaseFirestore firestore;
     private final DatabaseReference realtimeDb;
 
-    private final HashSet<String> shownRequestIds = new HashSet<>();
-    private final HashSet<String> startedBattleIds = new HashSet<>();
+    private static final HashSet<String> shownRequestIds = new HashSet<>();
+    private static final HashSet<String> startedBattleIds = new HashSet<>();
 
     private static final int DEFAULT_BET_GOLD = 100;
     private static final int DEFAULT_SUBJECT_ID = 1;
@@ -92,8 +92,7 @@ public class BattleRequestManager {
 
         TextView tvTitle = dialogView.findViewById(R.id.tvBattleDialogTitle);
         TextView tvGold = dialogView.findViewById(R.id.tvBattleGold);
-        TextView tvSubject = dialogView.findViewById(R.id.tvBattleSubject);
-        TextView tvDifficulty = dialogView.findViewById(R.id.tvBattleDifficulty);
+
         TextView btnCancel = dialogView.findViewById(R.id.btnBattleCancel);
         TextView btnApply = dialogView.findViewById(R.id.btnBattleApply);
 
@@ -109,8 +108,7 @@ public class BattleRequestManager {
 
         tvTitle.setText(targetName + "님에게 대전 신청");
         tvGold.setText("베팅 골드 기본값: " + DEFAULT_BET_GOLD);
-        tvSubject.setText("과목 번호 기본값: " + DEFAULT_SUBJECT_ID);
-        tvDifficulty.setText("난이도 기본값: " + DEFAULT_DIFFICULTY);
+
 
         currentDialog = new AlertDialog.Builder(activity)
                 .setView(dialogView)
@@ -138,7 +136,27 @@ public class BattleRequestManager {
         currentDialog.show();
     }
 
+    public void sendBattleRequest(FriendItem friendItem, int betGold, int subjectId, String difficulty) {
+        String myUid = getMyUid();
 
+        if (myUid == null) {
+            Toast.makeText(activity, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (friendItem == null || friendItem.getUid() == null || friendItem.getUid().trim().isEmpty()) {
+            Toast.makeText(activity, "친구 정보가 올바르지 않습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        BattleRequestInput input = new BattleRequestInput(
+                betGold,
+                subjectId,
+                difficulty
+        );
+
+        createBattleRequest(friendItem, input);
+    }
 
     private void createBattleRequest(FriendItem friendItem, BattleRequestInput input) {
         String myUid = getMyUid();
@@ -423,6 +441,14 @@ public class BattleRequestManager {
         updates.put("status", "accepted");
         updates.put("battleId", battleId);
 
+        // 수락자는 createBattleRoom 성공 후 바로 BattleQuizActivity로 이동하므로 true
+        updates.put("toEntered", true);
+
+        // 신청자는 listenAcceptedOutgoingBattleRequests()에서 감지 후 들어가야 하므로 false
+        updates.put("fromEntered", false);
+
+        updates.put("acceptedAt", System.currentTimeMillis());
+
         realtimeDb.child("battle_requests")
                 .child(requestId)
                 .updateChildren(updates);
@@ -430,7 +456,6 @@ public class BattleRequestManager {
 
     public void listenAcceptedOutgoingBattleRequests() {
         String myUid = getMyUid();
-
         if (myUid == null) {
             return;
         }
@@ -442,8 +467,14 @@ public class BattleRequestManager {
                     @Override
                     public void onDataChange(@androidx.annotation.NonNull DataSnapshot snapshot) {
                         for (DataSnapshot requestSnap : snapshot.getChildren()) {
+                            String requestId = requestSnap.getKey();
                             String status = requestSnap.child("status").getValue(String.class);
                             String battleId = requestSnap.child("battleId").getValue(String.class);
+                            Boolean fromEntered = requestSnap.child("fromEntered").getValue(Boolean.class);
+
+                            if (requestId == null) {
+                                continue;
+                            }
 
                             if (!"accepted".equals(status)) {
                                 continue;
@@ -453,12 +484,26 @@ public class BattleRequestManager {
                                 continue;
                             }
 
+                            // 이미 신청자 쪽에서 한 번 퀴즈방에 들어간 요청이면 다시 실행하지 않음
+                            if (Boolean.TRUE.equals(fromEntered)) {
+                                continue;
+                            }
+
                             if (startedBattleIds.contains(battleId)) {
                                 continue;
                             }
 
                             startedBattleIds.add(battleId);
-                            startBattleQuizActivity(battleId);
+
+                            // 먼저 fromEntered를 true로 찍고 이동해야
+                            // 앱 재진입 시 같은 accepted 요청으로 퀴즈가 다시 열리지 않음
+                            realtimeDb.child("battle_requests")
+                                    .child(requestId)
+                                    .child("fromEntered")
+                                    .setValue(true)
+                                    .addOnSuccessListener(unused -> {
+                                        startBattleQuizActivity(battleId);
+                                    });
                         }
                     }
 
