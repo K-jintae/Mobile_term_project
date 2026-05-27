@@ -109,6 +109,14 @@ public class BattleQuizActivity extends AppCompatActivity {
 
         bindViews();
         setButtonEvents();
+
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                leaveBattleRoomAndFinish();
+            }
+        });
+
         listenBattleRoom();
     }
 
@@ -147,6 +155,9 @@ public class BattleQuizActivity extends AppCompatActivity {
 
         battleExitHandled = true;
 
+        stopTimer();
+        setOptionButtonsEnabled(false);
+
         if (roomRef == null || myUid == null) {
             finish();
             return;
@@ -159,9 +170,14 @@ public class BattleQuizActivity extends AppCompatActivity {
         updates.put("leftAt", System.currentTimeMillis());
 
         roomRef.updateChildren(updates)
-                .addOnCompleteListener(task -> {
+                .addOnSuccessListener(unused -> {
                     Toast.makeText(this, "대전을 나갔습니다.", Toast.LENGTH_SHORT).show();
                     finish();
+                })
+                .addOnFailureListener(e -> {
+                    battleExitHandled = false;
+                    Toast.makeText(this, "대전 나가기 실패: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    setOptionButtonsEnabled(true);
                 });
     }
 
@@ -193,13 +209,6 @@ public class BattleQuizActivity extends AppCompatActivity {
         String status = getStringValue(room, "status", "loading");
         String roundState = getStringValue(room, "roundState", "loading");
 
-        // 방 기본 정보가 아직 준비되지 않은 경우
-        if (playerA == null || playerB == null || hostUid == null) {
-            showLoadingState("대전방 정보를 불러오는 중입니다.");
-            return;
-        }
-
-        // 상대방 또는 내가 나가서 방이 취소된 경우
         if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
             String leftUid = room.child("leftUid").getValue(String.class);
 
@@ -216,12 +225,16 @@ public class BattleQuizActivity extends AppCompatActivity {
             return;
         }
 
+        if (playerA == null || playerB == null || hostUid == null) {
+            showLoadingState("대전방 정보를 불러오는 중입니다.");
+            return;
+        }
+
         isHost = myUid != null && myUid.equals(hostUid);
         opponentUid = myUid != null && myUid.equals(playerA) ? playerB : playerA;
 
         int questionCount = getIntValue(room, "questionCount", 10);
 
-        // 호스트만 문제를 불러와서 방에 저장
         if (isHost
                 && ("loading".equals(status) || "loading".equals(roundState))
                 && !questionLoadRequested) {
@@ -571,10 +584,6 @@ public class BattleQuizActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        leaveBattleRoomAndFinish();
-    }
 
     private void submitAnswer(int selectedIndex) {
         if (alreadyAnsweredThisRound) {
@@ -674,23 +683,25 @@ public class BattleQuizActivity extends AppCompatActivity {
             @NonNull
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData currentData) {
+                String status = asString(currentData.child("status").getValue(), "loading");
                 String roundState = asString(currentData.child("roundState").getValue(), "loading");
+
+                if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+                    return Transaction.success(currentData);
+                }
 
                 if (!"answering".equals(roundState)) {
                     return Transaction.success(currentData);
                 }
 
                 int roundIndex = asInt(currentData.child("roundIndex").getValue(), 0);
-
                 if (roundIndex != targetRoundIndex) {
                     return Transaction.success(currentData);
                 }
 
                 int correctIndex = -999;
-
                 MutableData questionData = currentData.child("questions").child(String.valueOf(roundIndex));
                 Object correctObj = questionData.child("correctAnswerIndex").getValue();
-
                 if (correctObj instanceof Number) {
                     correctIndex = ((Number) correctObj).intValue();
                 }
@@ -755,14 +766,18 @@ public class BattleQuizActivity extends AppCompatActivity {
             @NonNull
             @Override
             public Transaction.Result doTransaction(@NonNull MutableData currentData) {
+                String status = asString(currentData.child("status").getValue(), "loading");
                 String roundState = asString(currentData.child("roundState").getValue(), "loading");
+
+                if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+                    return Transaction.success(currentData);
+                }
 
                 if (!"revealing".equals(roundState)) {
                     return Transaction.success(currentData);
                 }
 
                 int currentRoundIndex = asInt(currentData.child("roundIndex").getValue(), 0);
-
                 if (currentRoundIndex != finishedRoundIndex) {
                     return Transaction.success(currentData);
                 }
