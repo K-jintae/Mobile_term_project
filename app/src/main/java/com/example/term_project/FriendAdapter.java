@@ -49,6 +49,11 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         holder.btnAccept.setVisibility(View.GONE);
         holder.btnReject.setVisibility(View.GONE);
         holder.btnAddFriend.setVisibility(View.GONE);
+        holder.btnAddFriend.setText("친구 신청");
+
+        holder.btnAddFriend.setOnClickListener(null);
+        holder.btnAccept.setOnClickListener(null);
+        holder.btnReject.setOnClickListener(null);
 
         String status = item.getStatus();
 
