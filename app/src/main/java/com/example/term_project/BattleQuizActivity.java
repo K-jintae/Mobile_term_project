@@ -10,6 +10,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -19,6 +20,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +39,7 @@ public class BattleQuizActivity extends AppCompatActivity {
     private TextView tvMyScore;
     private TextView tvOpponentScore;
     private TextView tvOpponentStatus;
-    private boolean battleExitHandled = false;
+
     private Button btnOption1;
     private Button btnOption2;
     private Button btnOption3;
@@ -49,6 +51,9 @@ public class BattleQuizActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private DatabaseReference roomRef;
 
+    private ValueEventListener roomListener;
+    private ValueEventListener serverTimeOffsetListener;
+
     private String battleId;
     private String myUid;
     private String playerA;
@@ -57,15 +62,16 @@ public class BattleQuizActivity extends AppCompatActivity {
     private String opponentUid;
 
     private boolean isHost = false;
-    private boolean alreadyAnsweredThisRound = false;
+    private boolean battleExitHandled = false;
     private boolean questionLoadRequested = false;
     private boolean finishSettledRequested = false;
 
     private int lastRenderedRound = -1;
     private int lastScheduledRevealRound = -1;
 
-    private List<QuizQuestion> questions = new ArrayList<>();
+    private long serverTimeOffset = 0L;
 
+    private final List<QuizQuestion> questions = new ArrayList<>();
     private Runnable timerRunnable;
 
     private static final int DEFAULT_BUTTON_COLOR = Color.parseColor("#F5EBE0");
@@ -73,11 +79,10 @@ public class BattleQuizActivity extends AppCompatActivity {
     private static final int MY_CHOICE_COLOR = Color.parseColor("#90CAF9");
     private static final int OPPONENT_CHOICE_COLOR = Color.parseColor("#FFCC80");
 
-    // 대전용: 과목과 난이도를 섞어서 출제
-    // 실제 DB 과목 번호가 1~7이 아니면 여기만 수정
+    // 실제 DB 과목 번호가 다르면 여기만 수정
     private static final int[] BATTLE_SUBJECT_IDS = {1, 2, 3, 4, 5, 6, 7};
 
-    // 기존 LevelTestActivity에서 easy / normal / hard를 사용하고 있으므로 이 기준 사용
+    // 기존 LevelTestActivity 기준
     private static final String[] BATTLE_DIFFICULTIES = {"easy", "normal", "hard"};
 
     @Override
@@ -94,8 +99,8 @@ public class BattleQuizActivity extends AppCompatActivity {
         }
 
         myUid = auth.getCurrentUser().getUid();
-        battleId = getIntent().getStringExtra("battleId");
 
+        battleId = getIntent().getStringExtra("battleId");
         if (battleId == null || battleId.trim().isEmpty()) {
             Toast.makeText(this, "대전 방 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show();
             finish();
@@ -110,13 +115,14 @@ public class BattleQuizActivity extends AppCompatActivity {
         bindViews();
         setButtonEvents();
 
-        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 leaveBattleRoomAndFinish();
             }
         });
 
+        listenServerTimeOffset();
         listenBattleRoom();
     }
 
@@ -143,46 +149,37 @@ public class BattleQuizActivity extends AppCompatActivity {
         btnOption3.setOnClickListener(v -> submitAnswer(2));
         btnOption4.setOnClickListener(v -> submitAnswer(3));
 
-        btnExitBattle.setOnClickListener(v -> {
-            leaveBattleRoomAndFinish();
-        });
+        btnExitBattle.setOnClickListener(v -> leaveBattleRoomAndFinish());
     }
 
-    private void leaveBattleRoomAndFinish() {
-        if (battleExitHandled) {
-            return;
-        }
+    private void listenServerTimeOffset() {
+        DatabaseReference offsetRef = FirebaseDatabase.getInstance()
+                .getReference(".info/serverTimeOffset");
 
-        battleExitHandled = true;
+        serverTimeOffsetListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Long offset = snapshot.getValue(Long.class);
+                if (offset != null) {
+                    serverTimeOffset = offset;
+                }
+            }
 
-        stopTimer();
-        setOptionButtonsEnabled(false);
+            @Override
+            public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
+                // 실패하면 로컬 시간 기준 fallback
+            }
+        };
 
-        if (roomRef == null || myUid == null) {
-            finish();
-            return;
-        }
+        offsetRef.addValueEventListener(serverTimeOffsetListener);
+    }
 
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "cancelled");
-        updates.put("roundState", "cancelled");
-        updates.put("leftUid", myUid);
-        updates.put("leftAt", System.currentTimeMillis());
-
-        roomRef.updateChildren(updates)
-                .addOnSuccessListener(unused -> {
-                    Toast.makeText(this, "대전을 나갔습니다.", Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    battleExitHandled = false;
-                    Toast.makeText(this, "대전 나가기 실패: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    setOptionButtonsEnabled(true);
-                });
+    private long getServerNow() {
+        return System.currentTimeMillis() + serverTimeOffset;
     }
 
     private void listenBattleRoom() {
-        roomRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+        roomListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
@@ -198,7 +195,9 @@ public class BattleQuizActivity extends AppCompatActivity {
             public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
                 Toast.makeText(BattleQuizActivity.this, "대전 정보 로드 실패: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        });
+        };
+
+        roomRef.addValueEventListener(roomListener);
     }
 
     private void renderRoom(DataSnapshot room) {
@@ -209,22 +208,6 @@ public class BattleQuizActivity extends AppCompatActivity {
         String status = getStringValue(room, "status", "loading");
         String roundState = getStringValue(room, "roundState", "loading");
 
-        if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
-            String leftUid = room.child("leftUid").getValue(String.class);
-
-            stopTimer();
-            setOptionButtonsEnabled(false);
-
-            if (leftUid != null && !leftUid.equals(myUid)) {
-                Toast.makeText(this, "상대방이 대전에서 나갔습니다.", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "대전이 종료되었습니다.", Toast.LENGTH_SHORT).show();
-            }
-
-            finish();
-            return;
-        }
-
         if (playerA == null || playerB == null || hostUid == null) {
             showLoadingState("대전방 정보를 불러오는 중입니다.");
             return;
@@ -233,12 +216,24 @@ public class BattleQuizActivity extends AppCompatActivity {
         isHost = myUid != null && myUid.equals(hostUid);
         opponentUid = myUid != null && myUid.equals(playerA) ? playerB : playerA;
 
+        if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+            stopTimer();
+            setOptionButtonsEnabled(false);
+            Toast.makeText(this, "대전이 취소되었습니다.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        if ("finished".equals(status) || "finished".equals(roundState)) {
+            loadQuestionsFromSnapshot(room);
+            updateScoreViews(room);
+            renderFinished(room);
+            return;
+        }
+
         int questionCount = getIntValue(room, "questionCount", 10);
 
-        if (isHost
-                && ("loading".equals(status) || "loading".equals(roundState))
-                && !questionLoadRequested) {
-
+        if (isHost && ("loading".equals(status) || "loading".equals(roundState)) && !questionLoadRequested) {
             questionLoadRequested = true;
             loadMixedQuestionsAndStart(questionCount);
             showLoadingState("문제를 불러오는 중입니다.");
@@ -255,17 +250,13 @@ public class BattleQuizActivity extends AppCompatActivity {
         int roundIndex = getIntValue(room, "roundIndex", 0);
 
         if (roundIndex != lastRenderedRound) {
-            alreadyAnsweredThisRound = hasMyAnswer(room, roundIndex);
             lastRenderedRound = roundIndex;
-        } else {
-            alreadyAnsweredThisRound = hasMyAnswer(room, roundIndex);
         }
 
         updateScoreViews(room);
 
         if ("answering".equals(roundState)) {
             renderAnswering(room, roundIndex);
-
         } else if ("revealing".equals(roundState)) {
             renderRevealing(room, roundIndex);
 
@@ -275,14 +266,11 @@ public class BattleQuizActivity extends AppCompatActivity {
 
                 handler.postDelayed(() -> advanceToNextRound(roundIndex), revealDurationMs);
             }
-
-        } else if ("finished".equals(roundState) || "finished".equals(status)) {
-            renderFinished(room);
-
         } else {
             showLoadingState("대전 상태를 준비하는 중입니다.");
         }
     }
+
     private void showLoadingState(String message) {
         tvBattleTitle.setText("실시간 퀴즈 대전");
         tvTimer.setText("-");
@@ -290,15 +278,14 @@ public class BattleQuizActivity extends AppCompatActivity {
         tvQuestionCount.setText("");
         tvQuestion.setText(message);
         tvOpponentStatus.setText("");
-
         setOptionButtonsEnabled(false);
         resetButtonColors();
     }
 
     private void loadMixedQuestionsAndStart(int questionCount) {
         QuizRepository repository = new QuizRepository();
-
         ArrayList<QuizQuestion> allQuestions = new ArrayList<>();
+
         final int[] pendingCount = {BATTLE_SUBJECT_IDS.length * BATTLE_DIFFICULTIES.length};
 
         for (int subjectId : BATTLE_SUBJECT_IDS) {
@@ -323,7 +310,6 @@ public class BattleQuizActivity extends AppCompatActivity {
 
                             @Override
                             public void onFailure(Exception e) {
-                                // 일부 과목/난이도 조회 실패는 무시하고 나머지 문제로 진행
                                 pendingCount[0]--;
 
                                 if (pendingCount[0] == 0) {
@@ -358,7 +344,11 @@ public class BattleQuizActivity extends AppCompatActivity {
         updates.put("status", "playing");
         updates.put("roundState", "answering");
         updates.put("roundIndex", 0);
-        updates.put("roundStartTime", System.currentTimeMillis());
+        updates.put("roundStartTime", getServerNow());
+        updates.put("roundDurationMs", 10_000L);
+        updates.put("revealDurationMs", 2000L);
+        updates.put("goldSettled", false);
+        updates.put("goldSettlementInProgress", false);
 
         roomRef.updateChildren(updates);
     }
@@ -395,8 +385,8 @@ public class BattleQuizActivity extends AppCompatActivity {
         int correctAnswerIndex = correctIndexLong != null ? correctIndexLong.intValue() : 0;
 
         ArrayList<String> optionList = new ArrayList<>();
-
         DataSnapshot optionsSnap = snapshot.child("options");
+
         for (DataSnapshot optionChild : optionsSnap.getChildren()) {
             String option = optionChild.getValue(String.class);
 
@@ -447,16 +437,18 @@ public class BattleQuizActivity extends AppCompatActivity {
             tvOpponentStatus.setText("나: 선택 중 / 상대: 선택 중");
         }
 
-        setOptionButtonsEnabled(myChoice < 0);
+        // 핵심 수정:
+        // 선택했더라도 제한 시간 전까지 다시 선택 가능하게 유지
+        setOptionButtonsEnabled(true);
 
-        long roundStartTime = getLongValue(room, "roundStartTime", System.currentTimeMillis());
+        long roundStartTime = getLongValue(room, "roundStartTime", getServerNow());
         long roundDurationMs = getLongValue(room, "roundDurationMs", 10_000L);
 
-        startLocalTimer(room, roundIndex, roundStartTime, roundDurationMs);
+        startLocalTimer(roundIndex, roundStartTime, roundDurationMs);
 
-        if (isHost && bothAnswered(room, roundIndex)) {
-            closeRoundByTransaction(roundIndex);
-        }
+        // 핵심 수정:
+        // 양쪽이 선택해도 즉시 라운드 종료하지 않음.
+        // 타이머가 0이 되었을 때 host만 closeRoundByTransaction() 실행.
     }
 
     private void renderRevealing(DataSnapshot room, int roundIndex) {
@@ -508,9 +500,15 @@ public class BattleQuizActivity extends AppCompatActivity {
 
         int scoreA = getScore(room, playerA);
         int scoreB = getScore(room, playerB);
+
         int myScore = getScore(room, myUid);
         int opponentScore = getScore(room, opponentUid);
+
         int betGold = getIntValue(room, "betGold", 0);
+
+        String endReason = room.child("endReason").getValue(String.class);
+        String forfeitWinnerUid = room.child("forfeitWinnerUid").getValue(String.class);
+        String leftUid = room.child("leftUid").getValue(String.class);
 
         tvBattleTitle.setText("대전 종료");
         tvTimer.setText("끝");
@@ -519,45 +517,163 @@ public class BattleQuizActivity extends AppCompatActivity {
 
         String result;
 
-        if (myScore > opponentScore) {
-            result = "승리";
-        } else if (myScore < opponentScore) {
-            result = "패배";
+        if ("forfeit".equals(endReason) && forfeitWinnerUid != null) {
+            if (forfeitWinnerUid.equals(myUid)) {
+                result = "승리";
+            } else {
+                result = "패배";
+            }
         } else {
-            result = "무승부";
+            if (myScore > opponentScore) {
+                result = "승리";
+            } else if (myScore < opponentScore) {
+                result = "패배";
+            } else {
+                result = "무승부";
+            }
         }
 
-        tvQuestion.setText(
-                "결과: " + result + "\n\n" +
-                        "내 점수: " + myScore + "\n" +
-                        "상대 점수: " + opponentScore + "\n" +
-                        "베팅 골드: " + betGold
-        );
+        StringBuilder sb = new StringBuilder();
+        sb.append("결과: ").append(result).append("\n\n");
+        sb.append("내 점수: ").append(myScore).append("\n");
+        sb.append("상대 점수: ").append(opponentScore).append("\n");
+        sb.append("베팅 골드: ").append(betGold);
 
-        tvOpponentStatus.setText("골드 정산은 승패 기준으로 처리됩니다.");
+        if ("forfeit".equals(endReason)) {
+            sb.append("\n\n상대 또는 내가 대전 중 나가서 몰수패 처리되었습니다.");
+        }
+
+        tvQuestion.setText(sb.toString());
 
         Boolean goldSettled = room.child("goldSettled").getValue(Boolean.class);
+        Boolean goldSettlementInProgress = room.child("goldSettlementInProgress").getValue(Boolean.class);
 
-        if (isHost && !Boolean.TRUE.equals(goldSettled) && !finishSettledRequested) {
+        if (Boolean.TRUE.equals(goldSettled)) {
+            tvOpponentStatus.setText("골드 정산 완료");
+        } else if (Boolean.TRUE.equals(goldSettlementInProgress)) {
+            tvOpponentStatus.setText("골드 정산 중");
+        } else {
+            tvOpponentStatus.setText("골드 정산 대기 중");
+        }
+
+        if (!Boolean.TRUE.equals(goldSettled)
+                && !Boolean.TRUE.equals(goldSettlementInProgress)
+                && !finishSettledRequested) {
+
             finishSettledRequested = true;
 
+            if ("forfeit".equals(endReason) && forfeitWinnerUid != null && leftUid != null) {
+                requestForfeitGoldSettlement(forfeitWinnerUid, leftUid, betGold);
+            } else {
+                requestScoreGoldSettlement(playerA, playerB, betGold, scoreA, scoreB);
+            }
+        }
+    }
+
+    private void requestScoreGoldSettlement(
+            String playerA,
+            String playerB,
+            int betGold,
+            int scoreA,
+            int scoreB
+    ) {
+        claimGoldSettlement(() -> {
             GoldManager.settleBattleGold(playerA, playerB, betGold, scoreA, scoreB, new GoldManager.GoldCallback() {
                 @Override
                 public void onSuccess() {
-                    roomRef.child("goldSettled").setValue(true);
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("goldSettled", true);
+                    updates.put("goldSettlementInProgress", false);
+                    updates.put("goldSettledAt", getServerNow());
+                    roomRef.updateChildren(updates);
                 }
 
                 @Override
                 public void onFailure(String message) {
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("goldSettled", false);
+                    updates.put("goldSettlementInProgress", false);
+                    updates.put("goldSettlementError", message);
+                    roomRef.updateChildren(updates);
+
                     Toast.makeText(BattleQuizActivity.this, message, Toast.LENGTH_SHORT).show();
+                    finishSettledRequested = false;
                 }
             });
-        }
+        });
+    }
+
+    private void requestForfeitGoldSettlement(
+            String winnerUid,
+            String loserUid,
+            int betGold
+    ) {
+        claimGoldSettlement(() -> {
+            GoldManager.settleBattleGoldByWinner(winnerUid, loserUid, betGold, new GoldManager.GoldCallback() {
+                @Override
+                public void onSuccess() {
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("goldSettled", true);
+                    updates.put("goldSettlementInProgress", false);
+                    updates.put("goldSettledAt", getServerNow());
+                    roomRef.updateChildren(updates);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("goldSettled", false);
+                    updates.put("goldSettlementInProgress", false);
+                    updates.put("goldSettlementError", message);
+                    roomRef.updateChildren(updates);
+
+                    Toast.makeText(BattleQuizActivity.this, message, Toast.LENGTH_SHORT).show();
+                    finishSettledRequested = false;
+                }
+            });
+        });
+    }
+
+    private void claimGoldSettlement(Runnable onClaimed) {
+        roomRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData currentData) {
+                Boolean goldSettled = asBooleanObject(currentData.child("goldSettled").getValue());
+                Boolean inProgress = asBooleanObject(currentData.child("goldSettlementInProgress").getValue());
+
+                if (Boolean.TRUE.equals(goldSettled) || Boolean.TRUE.equals(inProgress)) {
+                    return Transaction.abort();
+                }
+
+                currentData.child("goldSettlementInProgress").setValue(true);
+                currentData.child("goldSettlementStartedBy").setValue(myUid);
+                currentData.child("goldSettlementStartedAt").setValue(getServerNow());
+
+                return Transaction.success(currentData);
+            }
+
+            @Override
+            public void onComplete(
+                    com.google.firebase.database.DatabaseError error,
+                    boolean committed,
+                    DataSnapshot currentData
+            ) {
+                if (error != null) {
+                    finishSettledRequested = false;
+                    Toast.makeText(BattleQuizActivity.this, "골드 정산 요청 실패: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (committed && onClaimed != null) {
+                    onClaimed.run();
+                }
+            }
+        });
     }
 
     private void setOptions(QuizQuestion question) {
         String[] options = question.getOptions();
-
         Button[] buttons = getOptionButtons();
 
         for (int i = 0; i < buttons.length; i++) {
@@ -584,12 +700,7 @@ public class BattleQuizActivity extends AppCompatActivity {
         }
     }
 
-
     private void submitAnswer(int selectedIndex) {
-        if (alreadyAnsweredThisRound) {
-            return;
-        }
-
         roomRef.get().addOnSuccessListener(room -> {
             String roundState = getStringValue(room, "roundState", "loading");
 
@@ -603,15 +714,12 @@ public class BattleQuizActivity extends AppCompatActivity {
                 return;
             }
 
-            if (hasMyAnswer(room, roundIndex)) {
-                alreadyAnsweredThisRound = true;
+            long roundStartTime = getLongValue(room, "roundStartTime", getServerNow());
+            long roundDurationMs = getLongValue(room, "roundDurationMs", 10_000L);
+            long remaining = roundDurationMs - (getServerNow() - roundStartTime);
+
+            if (remaining <= 0) {
                 setOptionButtonsEnabled(false);
-
-                int myChoice = getSelectedIndex(room, roundIndex, myUid);
-                if (myChoice >= 0) {
-                    showMySelectedAnswer(myChoice);
-                }
-
                 return;
             }
 
@@ -622,28 +730,27 @@ public class BattleQuizActivity extends AppCompatActivity {
             answer.put("selectedIndex", selectedIndex);
             answer.put("isCorrect", isCorrect);
             answer.put("timeout", false);
-            answer.put("answeredAt", System.currentTimeMillis());
+            answer.put("answeredAt", getServerNow());
 
             roomRef.child("answers")
                     .child(String.valueOf(roundIndex))
                     .child(myUid)
                     .setValue(answer)
                     .addOnSuccessListener(unused -> {
-                        alreadyAnsweredThisRound = true;
                         showMySelectedAnswer(selectedIndex);
-                        setOptionButtonsEnabled(false);
-                        tvOpponentStatus.setText("나: 선택 완료 / 상대 선택 대기 중");
+                        setOptionButtonsEnabled(true);
+                        tvOpponentStatus.setText("나: 선택 완료 / 제한 시간 전까지 변경 가능");
                     });
         });
     }
 
-    private void startLocalTimer(DataSnapshot room, int roundIndex, long roundStartTime, long roundDurationMs) {
+    private void startLocalTimer(int roundIndex, long roundStartTime, long roundDurationMs) {
         stopTimer();
 
         timerRunnable = new Runnable() {
             @Override
             public void run() {
-                long now = System.currentTimeMillis();
+                long now = getServerNow();
                 long elapsed = now - roundStartTime;
                 long remaining = roundDurationMs - elapsed;
 
@@ -654,13 +761,21 @@ public class BattleQuizActivity extends AppCompatActivity {
                 int seconds = (int) Math.ceil(remaining / 1000.0);
                 tvTimer.setText(String.valueOf(seconds));
 
-                int progress = (int) ((remaining * 100L) / roundDurationMs);
+                int progress = 0;
+
+                if (roundDurationMs > 0) {
+                    progress = (int) ((remaining * 100L) / roundDurationMs);
+                }
+
                 progressTimer.setProgress(Math.max(0, Math.min(100, progress)));
 
                 if (remaining <= 0) {
+                    setOptionButtonsEnabled(false);
+
                     if (isHost) {
                         closeRoundByTransaction(roundIndex);
                     }
+
                     return;
                 }
 
@@ -686,7 +801,7 @@ public class BattleQuizActivity extends AppCompatActivity {
                 String status = asString(currentData.child("status").getValue(), "loading");
                 String roundState = asString(currentData.child("roundState").getValue(), "loading");
 
-                if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+                if ("finished".equals(status) || "cancelled".equals(status)) {
                     return Transaction.success(currentData);
                 }
 
@@ -695,13 +810,16 @@ public class BattleQuizActivity extends AppCompatActivity {
                 }
 
                 int roundIndex = asInt(currentData.child("roundIndex").getValue(), 0);
+
                 if (roundIndex != targetRoundIndex) {
                     return Transaction.success(currentData);
                 }
 
                 int correctIndex = -999;
+
                 MutableData questionData = currentData.child("questions").child(String.valueOf(roundIndex));
                 Object correctObj = questionData.child("correctAnswerIndex").getValue();
+
                 if (correctObj instanceof Number) {
                     correctIndex = ((Number) correctObj).intValue();
                 }
@@ -726,7 +844,7 @@ public class BattleQuizActivity extends AppCompatActivity {
                 }
 
                 currentData.child("roundState").setValue("revealing");
-                currentData.child("revealStartTime").setValue(System.currentTimeMillis());
+                currentData.child("revealStartTime").setValue(getServerNow());
 
                 return Transaction.success(currentData);
             }
@@ -758,7 +876,7 @@ public class BattleQuizActivity extends AppCompatActivity {
         userAnswer.child("selectedIndex").setValue(-1);
         userAnswer.child("isCorrect").setValue(false);
         userAnswer.child("timeout").setValue(true);
-        userAnswer.child("answeredAt").setValue(System.currentTimeMillis());
+        userAnswer.child("answeredAt").setValue(getServerNow());
     }
 
     private void advanceToNextRound(int finishedRoundIndex) {
@@ -769,7 +887,7 @@ public class BattleQuizActivity extends AppCompatActivity {
                 String status = asString(currentData.child("status").getValue(), "loading");
                 String roundState = asString(currentData.child("roundState").getValue(), "loading");
 
-                if ("cancelled".equals(status) || "cancelled".equals(roundState)) {
+                if ("finished".equals(status) || "cancelled".equals(status)) {
                     return Transaction.success(currentData);
                 }
 
@@ -778,6 +896,7 @@ public class BattleQuizActivity extends AppCompatActivity {
                 }
 
                 int currentRoundIndex = asInt(currentData.child("roundIndex").getValue(), 0);
+
                 if (currentRoundIndex != finishedRoundIndex) {
                     return Transaction.success(currentData);
                 }
@@ -787,11 +906,11 @@ public class BattleQuizActivity extends AppCompatActivity {
                 if (currentRoundIndex + 1 >= questionCount) {
                     currentData.child("roundState").setValue("finished");
                     currentData.child("status").setValue("finished");
-                    currentData.child("finishedAt").setValue(System.currentTimeMillis());
+                    currentData.child("finishedAt").setValue(getServerNow());
                 } else {
                     currentData.child("roundIndex").setValue(currentRoundIndex + 1);
                     currentData.child("roundState").setValue("answering");
-                    currentData.child("roundStartTime").setValue(System.currentTimeMillis());
+                    currentData.child("roundStartTime").setValue(getServerNow());
                 }
 
                 return Transaction.success(currentData);
@@ -806,6 +925,81 @@ public class BattleQuizActivity extends AppCompatActivity {
                 if (error != null) {
                     Toast.makeText(BattleQuizActivity.this, "다음 문제 이동 실패: " + error.getMessage(), Toast.LENGTH_SHORT).show();
                 }
+            }
+        });
+    }
+
+    private void leaveBattleRoomAndFinish() {
+        if (battleExitHandled) {
+            return;
+        }
+
+        battleExitHandled = true;
+
+        stopTimer();
+        setOptionButtonsEnabled(false);
+
+        if (roomRef == null || myUid == null) {
+            finish();
+            return;
+        }
+
+        roomRef.runTransaction(new Transaction.Handler() {
+            @NonNull
+            @Override
+            public Transaction.Result doTransaction(@NonNull MutableData currentData) {
+                String status = asString(currentData.child("status").getValue(), "loading");
+                String roundState = asString(currentData.child("roundState").getValue(), "loading");
+
+                if ("finished".equals(status) || "finished".equals(roundState)) {
+                    return Transaction.success(currentData);
+                }
+
+                String a = asString(currentData.child("playerA").getValue(), null);
+                String b = asString(currentData.child("playerB").getValue(), null);
+
+                String winnerUid = null;
+
+                if (myUid.equals(a)) {
+                    winnerUid = b;
+                } else if (myUid.equals(b)) {
+                    winnerUid = a;
+                }
+
+                if (winnerUid == null) {
+                    currentData.child("status").setValue("cancelled");
+                    currentData.child("roundState").setValue("cancelled");
+                    currentData.child("leftUid").setValue(myUid);
+                    currentData.child("leftAt").setValue(getServerNow());
+                    return Transaction.success(currentData);
+                }
+
+                currentData.child("status").setValue("finished");
+                currentData.child("roundState").setValue("finished");
+                currentData.child("endReason").setValue("forfeit");
+                currentData.child("leftUid").setValue(myUid);
+                currentData.child("forfeitWinnerUid").setValue(winnerUid);
+                currentData.child("leftAt").setValue(getServerNow());
+                currentData.child("finishedAt").setValue(getServerNow());
+
+                return Transaction.success(currentData);
+            }
+
+            @Override
+            public void onComplete(
+                    com.google.firebase.database.DatabaseError error,
+                    boolean committed,
+                    DataSnapshot currentData
+            ) {
+                if (error != null) {
+                    battleExitHandled = false;
+                    setOptionButtonsEnabled(true);
+                    Toast.makeText(BattleQuizActivity.this, "대전 나가기 실패: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Toast.makeText(BattleQuizActivity.this, "대전을 나갔습니다.", Toast.LENGTH_SHORT).show();
+                finish();
             }
         });
     }
@@ -827,32 +1021,15 @@ public class BattleQuizActivity extends AppCompatActivity {
         return value != null ? value.intValue() : 0;
     }
 
-    private boolean hasMyAnswer(DataSnapshot room, int roundIndex) {
-        return room.child("answers")
-                .child(String.valueOf(roundIndex))
-                .child(myUid)
-                .exists();
-    }
-
     private boolean hasOpponentAnswer(DataSnapshot room, int roundIndex) {
+        if (opponentUid == null) {
+            return false;
+        }
+
         return room.child("answers")
                 .child(String.valueOf(roundIndex))
                 .child(opponentUid)
                 .exists();
-    }
-
-    private boolean bothAnswered(DataSnapshot room, int roundIndex) {
-        boolean aAnswered = room.child("answers")
-                .child(String.valueOf(roundIndex))
-                .child(playerA)
-                .exists();
-
-        boolean bAnswered = room.child("answers")
-                .child(String.valueOf(roundIndex))
-                .child(playerB)
-                .exists();
-
-        return aAnswered && bAnswered;
     }
 
     private int getSelectedIndex(DataSnapshot room, int roundIndex, String uid) {
@@ -912,6 +1089,7 @@ public class BattleQuizActivity extends AppCompatActivity {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
+
         return defaultValue;
     }
 
@@ -919,13 +1097,33 @@ public class BattleQuizActivity extends AppCompatActivity {
         if (value instanceof Boolean) {
             return (Boolean) value;
         }
+
         return defaultValue;
+    }
+
+    private Boolean asBooleanObject(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+
+        return false;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
         stopTimer();
         handler.removeCallbacksAndMessages(null);
+
+        if (roomRef != null && roomListener != null) {
+            roomRef.removeEventListener(roomListener);
+        }
+
+        if (serverTimeOffsetListener != null) {
+            FirebaseDatabase.getInstance()
+                    .getReference(".info/serverTimeOffset")
+                    .removeEventListener(serverTimeOffsetListener);
+        }
     }
 }

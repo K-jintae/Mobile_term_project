@@ -88,4 +88,39 @@ public class GoldManager {
             }
         });
     }
+
+    public static void settleBattleGoldByWinner(
+            String winnerUid,
+            String loserUid,
+            int betGold,
+            GoldCallback callback
+    ) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        DocumentReference winnerRef = db.collection("users").document(winnerUid);
+        DocumentReference loserRef = db.collection("users").document(loserUid);
+
+        db.runTransaction(transaction -> {
+            Long winnerGoldLong = transaction.get(winnerRef).getLong("gold");
+            Long loserGoldLong = transaction.get(loserRef).getLong("gold");
+
+            long winnerGold = winnerGoldLong != null ? winnerGoldLong : 0L;
+            long loserGold = loserGoldLong != null ? loserGoldLong : 0L;
+
+            int pot = betGold * 2;
+
+            transaction.update(winnerRef, "gold", winnerGold + pot);
+            transaction.update(loserRef, "gold", loserGold);
+
+            return null;
+        }).addOnSuccessListener(unused -> {
+            if (callback != null) {
+                callback.onSuccess();
+            }
+        }).addOnFailureListener(e -> {
+            if (callback != null) {
+                callback.onFailure("몰수승 골드 정산 실패: " + e.getMessage());
+            }
+        });
+    }
 }
