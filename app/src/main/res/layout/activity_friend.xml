@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/friend_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -23,17 +24,30 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#FFFFFF"
-        android:padding="12dp"
+        android:background="@drawable/bg_friend_card"
+        android:padding="16dp"
+        android:gravity="center_vertical"
         android:layout_marginBottom="12dp">
 
         <TextView
             android:id="@+id/tv_my_id"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="내 아이디:"
-            android:textSize="15sp"
+            android:textSize="18sp"
+            android:textStyle="bold"
             android:textColor="#333333" />
+
+        <ImageButton
+            android:id="@+id/btn_copy_id"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_copy_button"
+            android:padding="10dp"
+            android:src="@drawable/copy"
+            android:scaleType="centerInside"
+            app:tint="#6D4C41"/>
     </LinearLayout>
 
     <LinearLayout
@@ -42,7 +56,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginBottom="12dp">
-        <!--자바 코드의 editSearchEmail = findViewById(R.id.edit_search_email); 과 매칭 -->
+
         <EditText
             android:id="@+id/edit_search_email"
             android:layout_width="0dp"
@@ -61,7 +75,7 @@
             android:layout_width="90dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
-            android:text="신청"
+            android:text="검색/신청"
             android:textSize="14sp" />
     </LinearLayout>
 

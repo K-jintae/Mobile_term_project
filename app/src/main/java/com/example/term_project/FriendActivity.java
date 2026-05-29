@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class FriendActivity extends AppCompatActivity implements FriendAdapter.OnFriendActionListener {
@@ -40,16 +42,17 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     private RecyclerView recyclerFriends;
     private TextView tvMyId;
     private LinearLayout layoutMyUserId;
+    private ImageButton btnCopyId; // 첫 번째 코드의 새 아이디 복사 버튼 유지
 
     private FriendAdapter adapter;
-    private List<FriendItem> friendList; // 객체 변수 선언
+    private List<FriendItem> friendList;
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
     private DatabaseReference realtimeDb;
 
     private String currentUid;
     private String currentName = "";
-    private String myLevel = "중";
+    private String myLevel = "레벨 없음";
 
     private boolean isMyFriendMode = true;
 
@@ -72,8 +75,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         }
 
         currentUid = auth.getCurrentUser().getUid();
-
-        // 💡 [수정] 아래의 뷰 바인딩 및 어댑터 세팅 전에 리스트를 반드시 먼저 초기화해야 합니다!
         friendList = new ArrayList<>();
 
         bindViews();
@@ -90,6 +91,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         recyclerFriends = findViewById(R.id.recycler_friends);
         tvMyId = findViewById(R.id.tv_my_id);
         layoutMyUserId = findViewById(R.id.layout_my_user_id);
+        btnCopyId = findViewById(R.id.btn_copy_id); // 뷰 바인딩 추가
     }
 
     private void setupRecycler() {
@@ -103,11 +105,13 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
             String input = editSearchEmail.getText().toString().trim();
 
             if (input.isEmpty()) {
-                Toast.makeText(this, "검색할 아이디 또는 이름을 입력해 주세요.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "검색할 닉네임을 입력해 주세요.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
+            // 직접 신청 로직 및 결과 리스트 표출 기능을 모두 병합하여 실행
             searchAndAddFriend(input);
+            searchFriendAndShowResult(input);
         });
 
         btnRecommendedFriends.setOnClickListener(v -> {
@@ -164,22 +168,28 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 });
     }
 
+    // [첫 번째 코드 기준 교정 완료] 첫 번째 코드의 문법 깨짐 오류를 바로잡고 복사 기능 완벽 연결
     private void setupCopyMyId(String myId) {
-        if (layoutMyUserId == null) return;
+        if (layoutMyUserId == null || btnCopyId == null) return;
 
         tvMyId.setPaintFlags(tvMyId.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
 
-        layoutMyUserId.setOnClickListener(v -> {
+        btnCopyId.setOnClickListener(v -> {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("my_id", myId);
             cm.setPrimaryClip(clip);
+
             Toast.makeText(this, "내 아이디가 복사되었습니다.", Toast.LENGTH_SHORT).show();
+
+            // Android 12S 이하 버전을 위한 첫 번째 코드 특수 조건절 유지
+            if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.S_V2) {
+                Toast.makeText(FriendActivity.this, "내 아이디가 복사되었습니다.", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
     private void loadFriendsList() {
         removePresenceListeners();
-
         friendList.clear();
         adapter.notifyDataSetChanged();
 
@@ -230,7 +240,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                         if (name == null || name.isEmpty()) {
                             name = doc.getString("userId");
                         }
-
                         if (name == null || name.isEmpty()) {
                             name = doc.getString("name");
                         }
@@ -238,7 +247,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                         if (name != null && !name.isEmpty()) {
                             item.setName(name);
                         }
-
                         if (level != null && !level.isEmpty()) {
                             item.setLevel(level);
                         }
@@ -302,6 +310,106 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         presenceListeners.add(listener);
     }
 
+    private void searchFriendAndShowResult(String input) {
+        removePresenceListeners();
+
+        isMyFriendMode = false;
+        btnRecommendedFriends.setText("내 친구 목록 보기");
+        btnRecommendedFriends.setBackgroundTintList(
+                ColorStateList.valueOf(Color.parseColor("#F5EBE0"))
+        );
+
+        friendList.clear();
+        adapter.notifyDataSetChanged();
+
+        String keyword = input.toLowerCase();
+
+        firestore.collection("users")
+                .limit(100)
+                .get()
+                .addOnSuccessListener(query -> {
+                    friendList.clear();
+
+                    for (DocumentSnapshot doc : query.getDocuments()) {
+                        String targetUid = doc.getId();
+
+                        if (targetUid.equals(currentUid)) {
+                            continue;
+                        }
+
+                        String id = doc.getString("id");
+                        String userId = doc.getString("userId");
+                        String name = doc.getString("name");
+
+                        boolean matched = false;
+
+                        if (id != null && id.toLowerCase().contains(keyword)) matched = true;
+                        if (userId != null && userId.toLowerCase().contains(keyword)) matched = true;
+                        if (name != null && name.toLowerCase().contains(keyword)) matched = true;
+
+                        if (!matched) continue;
+
+                        String displayName = id;
+                        if (displayName == null || displayName.isEmpty()) displayName = userId;
+                        if (displayName == null || displayName.isEmpty()) displayName = name;
+                        if (displayName == null || displayName.isEmpty()) displayName = "사용자";
+
+                        String level = doc.getString("level");
+                        if (level == null || level.isEmpty()) level = "없음";
+
+                        FriendItem item = new FriendItem(targetUid, displayName, "pending_none", level);
+                        item.setReason("검색 결과");
+
+                        checkFriendStatusAndAddToSearchResult(item);
+                    }
+
+                    if (friendList.isEmpty()) {
+                        Toast.makeText(this, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void checkFriendStatusAndAddToSearchResult(FriendItem item) {
+        realtimeDb.child("users")
+                .child(currentUid)
+                .child("friends")
+                .child(item.getUid())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (isMyFriendMode) return;
+
+                        if (snapshot.exists()) {
+                            FriendItem savedItem = snapshot.getValue(FriendItem.class);
+
+                            if (savedItem != null && savedItem.getStatus() != null) {
+                                item.setStatus(savedItem.getStatus());
+
+                                if ("pending_sent".equals(savedItem.getStatus())) {
+                                    item.setReason("친구 요청 보냄");
+                                } else if ("confirmed".equals(savedItem.getStatus())) {
+                                    item.setReason("내 친구");
+                                } else if ("pending_received".equals(savedItem.getStatus())) {
+                                    item.setReason("나에게 온 요청");
+                                }
+                            }
+                        }
+
+                        friendList.add(item);
+                        adapter.notifyItemInserted(friendList.size() - 1);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        friendList.add(item);
+                        adapter.notifyItemInserted(friendList.size() - 1);
+                    }
+                });
+    }
+
     private void searchAndAddFriend(String input) {
         searchUserByField("id", input, found -> {
             if (found) return;
@@ -337,15 +445,9 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                     String targetUid = doc.getId();
 
                     String targetName = doc.getString("id");
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = doc.getString("userId");
-                    }
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = doc.getString("name");
-                    }
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = "사용자";
-                    }
+                    if (targetName == null || targetName.isEmpty()) targetName = doc.getString("userId");
+                    if (targetName == null || targetName.isEmpty()) targetName = doc.getString("name");
+                    if (targetName == null || targetName.isEmpty()) targetName = "사용자";
 
                     handleFriendRequest(targetUid, targetName);
                     callback.onResult(true);
@@ -424,6 +526,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             ColorStateList.valueOf(Color.parseColor("#FFFFFF"))
                     );
                     loadFriendsList();
+                    removeItemFromListByUid(targetUid); // 추천 또는 검색뷰 리스트에서 즉시 파괴 유도
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "친구 요청 전송에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -449,13 +552,8 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             String uid = ds.getKey();
                             String status = ds.child("status").getValue(String.class);
 
-                            if (uid != null) {
-                                excludedUids.add(uid);
-                            }
-
-                            if (uid != null && "confirmed".equals(status)) {
-                                confirmedFriends.add(uid);
-                            }
+                            if (uid != null) excludedUids.add(uid);
+                            if (uid != null && "confirmed".equals(status)) confirmedFriends.add(uid);
                         }
 
                         findFriendsOfFriends(confirmedFriends);
@@ -486,15 +584,12 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             for (DataSnapshot ds : snapshot.getChildren()) {
                                 String fofUid = ds.getKey();
                                 String status = ds.child("status").getValue(String.class);
-                                if (fofUid != null
-                                        && "confirmed".equals(status)
-                                        && !excludedUids.contains(fofUid)) {
+                                if (fofUid != null && "confirmed".equals(status) && !excludedUids.contains(fofUid)) {
                                     firstPriorityUids.add(fofUid);
                                 }
                             }
 
                             remain[0]--;
-
                             if (remain[0] == 0) {
                                 for (String uid : firstPriorityUids) {
                                     excludedUids.add(uid);
@@ -507,10 +602,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                         @Override
                         public void onCancelled(@NonNull DatabaseError error) {
                             remain[0]--;
-
-                            if (remain[0] == 0) {
-                                findSimilarLevelUsers();
-                            }
+                            if (remain[0] == 0) findSimilarLevelUsers();
                         }
                     });
         }
@@ -524,13 +616,11 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 .addOnSuccessListener(query -> {
                     for (QueryDocumentSnapshot doc : query) {
                         String uid = doc.getId();
-
                         if (!excludedUids.contains(uid)) {
                             excludedUids.add(uid);
-                            addRecommendedUserToList(uid, "추천 친구");
+                            addRecommendedUserToList(uid, "비슷한 레벨의 친구");
                         }
                     }
-
                     findRandomUsers();
                 })
                 .addOnFailureListener(e -> findRandomUsers());
@@ -545,7 +635,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                     Collections.shuffle(docs);
 
                     int count = 0;
-
                     for (DocumentSnapshot doc : docs) {
                         String uid = doc.getId();
 
@@ -554,9 +643,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                             addRecommendedUserToList(uid, "추천 친구");
                             count++;
 
-                            if (count >= 15) {
-                                break;
-                            }
+                            if (count >= 15) break;
                         }
                     }
 
@@ -576,29 +663,58 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                     if (!doc.exists() || isMyFriendMode) return;
 
                     String name = doc.getString("id");
-
-                    if (name == null || name.isEmpty()) {
-                        name = doc.getString("userId");
-                    }
-
-                    if (name == null || name.isEmpty()) {
-                        name = doc.getString("name");
-                    }
-
-                    if (name == null || name.isEmpty()) {
-                        name = "사용자";
-                    }
+                    if (name == null || name.isEmpty()) name = doc.getString("userId");
+                    if (name == null || name.isEmpty()) name = doc.getString("name");
+                    if (name == null || name.isEmpty()) name = "사용자";
 
                     String level = doc.getString("level");
-                    if (level == null || level.isEmpty()) {
-                        level = "없음";
-                    }
+                    if (level == null || level.isEmpty()) level = "없음";
 
-                    FriendItem item = new FriendItem(uid, name, "pending_none", level);
-                    item.setReason(reason);
+                    String finalName = name;
+                    String finalLevel = level;
 
-                    friendList.add(item);
-                    adapter.notifyItemInserted(friendList.size() - 1);
+                    // 추천된 유저와의 실시간 관계 장부를 대조하여 UI 지시 사유 연쇄 치환 및 정합성 검증
+                    realtimeDb.child("users")
+                            .child(currentUid)
+                            .child("friends")
+                            .child(uid)
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    if (isMyFriendMode) return;
+
+                                    String status = "pending_none";
+                                    if (snapshot.exists()) {
+                                        FriendItem savedItem = snapshot.getValue(FriendItem.class);
+                                        if (savedItem != null && savedItem.getStatus() != null) {
+                                            status = savedItem.getStatus();
+                                        }
+                                    }
+
+                                    FriendItem item = new FriendItem(uid, finalName, status, finalLevel);
+
+                                    if ("pending_sent".equals(status)) {
+                                        item.setReason("친구 요청 보냄");
+                                    } else if ("pending_received".equals(status)) {
+                                        item.setReason("나에게 온 요청");
+                                    } else if ("confirmed".equals(status)) {
+                                        item.setReason("내 친구");
+                                    } else {
+                                        item.setReason(reason);
+                                    }
+
+                                    friendList.add(item);
+                                    adapter.notifyItemInserted(friendList.size() - 1);
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    FriendItem item = new FriendItem(uid, finalName, "pending_none", finalLevel);
+                                    item.setReason(reason);
+                                    friendList.add(item);
+                                    adapter.notifyItemInserted(friendList.size() - 1);
+                                }
+                            });
                 });
     }
 
@@ -628,6 +744,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     @Override
     public void onReject(FriendItem item) {
         String targetUid = item.getUid();
+        String status = item.getStatus();
 
         realtimeDb.child("users")
                 .child(currentUid)
@@ -641,8 +758,15 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 .child(currentUid)
                 .removeValue()
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(this, "친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show();
-                    loadFriendsList();
+                    // 첫 번째 코드 특유의 상태 분기별 맞춤형 피드백 보존
+                    if ("pending_sent".equals(status)) {
+                        Toast.makeText(this, "친구 요청을 취소했습니다.", Toast.LENGTH_SHORT).show();
+                    } else if ("pending_received".equals(status)) {
+                        Toast.makeText(this, "친구 요청을 거절했습니다.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "친구가 삭제되었습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                    removeItemFromList(item);
                 });
     }
 
@@ -660,7 +784,6 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 ref.removeEventListener(listener);
             }
         }
-
         presenceRefs.clear();
         presenceListeners.clear();
     }
@@ -669,5 +792,23 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
     protected void onDestroy() {
         super.onDestroy();
         removePresenceListeners();
+    }
+
+    private void removeItemFromList(FriendItem item) {
+        int position = friendList.indexOf(item);
+        if (position != -1) {
+            friendList.remove(position);
+            adapter.notifyItemRemoved(position);
+        }
+    }
+
+    private void removeItemFromListByUid(String uid) {
+        for (int i = 0; i < friendList.size(); i++) {
+            if (friendList.get(i).getUid().equals(uid)) {
+                friendList.remove(i);
+                adapter.notifyItemRemoved(i);
+                break;
+            }
+        }
     }
 }
