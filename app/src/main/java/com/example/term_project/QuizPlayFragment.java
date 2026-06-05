@@ -392,7 +392,6 @@ public class QuizPlayFragment extends Fragment {
             }
         }
 
-        saveContinueQuiz(currentQuestionIndex);
     }
 
     private void bindQuestion(QuizQuestion question) {

@@ -23,7 +23,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="이전에 풀던 문제 화면으로 이동합니다."
+        android:text="이전에 풀던 단계의 문제를 다시 시작할 수 있어요."
         android:textColor="#777777"
         android:textSize="14sp"
         android:gravity="center"
