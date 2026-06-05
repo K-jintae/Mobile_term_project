@@ -20,6 +20,16 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/tvResultGold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="+0G"
+        android:textColor="#D59A2F"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
         android:id="@+id/tvResultMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -122,10 +132,12 @@
                     android:id="@+id/tvStatSubject"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1"
+                    android:text="C언어"
                     android:textColor="#594C47"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
             </LinearLayout>
 
             <LinearLayout

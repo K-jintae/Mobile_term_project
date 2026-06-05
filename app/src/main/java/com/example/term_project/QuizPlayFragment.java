@@ -770,6 +770,8 @@ public class QuizPlayFragment extends Fragment {
         }
 
         TextView tvResultMessage = dialogView.findViewById(R.id.tvResultMessage);
+        TextView tvResultGold = dialogView.findViewById(R.id.tvResultGold);
+
 
         TextView tvStatEarnedGold = dialogView.findViewById(R.id.tvStatEarnedGold);
         TextView tvStatAccuracy = dialogView.findViewById(R.id.tvStatAccuracy);
@@ -798,9 +800,11 @@ public class QuizPlayFragment extends Fragment {
             tvResultMessage.setText("클리어 실패\n목표 점수의 80% 이상을 달성해야 합니다.");
         }
 
+        tvResultGold.setText("+" + earnedGold + "G 획득!");
+        tvStatEarnedGold.setText(earnedGold + " 점");
         tvStatEarnedGold.setText(earnedGold + " 점");
         tvStatAccuracy.setText(String.format("%.1f", correctRate) + "%");
-        tvStatSubject.setText(String.valueOf(currentSubjectId));
+        tvStatSubject.setText(getSubjectName(currentSubjectId));
         tvStatDifficulty.setText(getDifficultyKoreanName(currentDifficultyLevel));
         tvStatCorrectCount.setText(correctCount + "문제");
         tvStatWrongCount.setText(wrongCount + "문제");
@@ -938,6 +942,23 @@ public class QuizPlayFragment extends Fragment {
             case 7: return 6; // 인공지능개론
             case 8: return 2; // 데이터과학
             default: return stageId;
+        }
+    }
+
+    private String getSubjectName(int subjectId) {
+        switch (subjectId) {
+            case 1:
+                return "C언어";
+            case 2:
+                return "객체지향";
+            case 3:
+                return "자료구조";
+            case 4:
+                return "운영체제";
+            case 5:
+                return "인공지능";
+            default:
+                return "과목 " + subjectId;
         }
     }
 }
