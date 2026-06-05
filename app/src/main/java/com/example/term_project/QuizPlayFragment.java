@@ -561,9 +561,13 @@ public class QuizPlayFragment extends Fragment {
         }
 
         requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE)
+                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE)
                 .edit()
-                .clear()
+                .putBoolean("has_continue", false)
+                .remove("question_index")
+                .remove("total_solved_count")
+                .remove("correct_count")
+                .remove("earned_gold")
                 .apply();
     }
 
@@ -753,6 +757,7 @@ public class QuizPlayFragment extends Fragment {
             return;
         }
 
+        saveLastQuizInfo();
         clearContinueQuiz();
 
         if (getActivity() instanceof MainActivity) {
@@ -960,5 +965,20 @@ public class QuizPlayFragment extends Fragment {
             default:
                 return "과목 " + subjectId;
         }
+    }
+
+    private void saveLastQuizInfo() {
+        if (getContext() == null) {
+            return;
+        }
+
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
+
+        prefs.edit()
+                .putBoolean("has_last_quiz", true)
+                .putInt("last_subject_id", currentSubjectId)
+                .putString("last_difficulty_level", currentDifficultyLevel)
+                .apply();
     }
 }

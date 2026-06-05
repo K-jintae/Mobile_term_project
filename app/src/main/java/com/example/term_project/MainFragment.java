@@ -541,19 +541,31 @@ public class MainFragment extends Fragment {
                 .getSharedPreferences("continue_quiz", Context.MODE_PRIVATE);
 
         boolean hasContinue = prefs.getBoolean("has_continue", false);
+        boolean hasLastQuiz = prefs.getBoolean("has_last_quiz", false);
 
-        if (!hasContinue) {
+        if (!hasContinue && !hasLastQuiz) {
             Toast.makeText(getActivity(), "이어풀 문제가 없어요.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        int subjectId = prefs.getInt("subject_id", 1);
-        String difficultyLevel = prefs.getString("difficulty_level", "easy");
+        int subjectId;
+        String difficultyLevel;
+        boolean continueMode;
+
+        if (hasContinue) {
+            subjectId = prefs.getInt("subject_id", 1);
+            difficultyLevel = prefs.getString("difficulty_level", "easy");
+            continueMode = true;
+        } else {
+            subjectId = prefs.getInt("last_subject_id", 1);
+            difficultyLevel = prefs.getString("last_difficulty_level", "easy");
+            continueMode = false;
+        }
 
         Bundle bundle = new Bundle();
         bundle.putInt("subject_id", subjectId);
         bundle.putString("difficulty_level", difficultyLevel);
-        bundle.putBoolean("continue_mode", true);
+        bundle.putBoolean("continue_mode", continueMode);
 
         QuizPlayFragment fragment = new QuizPlayFragment();
         fragment.setArguments(bundle);

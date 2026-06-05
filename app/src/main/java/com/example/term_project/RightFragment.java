@@ -15,6 +15,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.Gravity;
+import android.graphics.Color;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -69,8 +71,19 @@ public class RightFragment extends Fragment {
     private static final int TAB_INTERIOR = 3;
 
     private int currentTab = TAB_ALL;
-    private static final int ITEM_PRICE = 10; // 모든 아이템 가격 10골드 고정
+    private static final int HAT_PRICE = 100;
+    private static final int CLOTHES_PRICE = 200;
+    private static final int INTERIOR_PRICE = 300; // 모든 아이템 가격 10골드 고정
 
+    private int getItemPrice(String itemName, boolean isInterior) {
+        if (isInterior) return INTERIOR_PRICE;
+
+        if (itemName.startsWith("hat_")) return HAT_PRICE;
+
+        if (itemName.startsWith("clothes_")) return CLOTHES_PRICE;
+
+        return HAT_PRICE;
+    }
     private final List<DressItem> hatList = Arrays.asList(
             new DressItem(R.drawable.thumb_hat_halloween, R.drawable.hat_halloween),
             new DressItem(R.drawable.thumb_hat_hiphop, R.drawable.hat_hiphop),
@@ -297,7 +310,9 @@ public class RightFragment extends Fragment {
         MainActivity mainActivity = (MainActivity) getActivity();
         if (mainActivity == null || uid == null) return;
 
-        if (mainActivity.spendGold(ITEM_PRICE)) {
+        int price = getItemPrice(itemName, isInterior);
+
+        if (mainActivity.spendGold(price)) {
             db.collection("users").document(uid)
                     .update(
                             "gold", mainActivity.getGold(),
@@ -308,7 +323,7 @@ public class RightFragment extends Fragment {
                         showChangeConfirmPopup(resId, isInterior);
                     })
                     .addOnFailureListener(e -> {
-                        mainActivity.addGold(ITEM_PRICE); // 실패 시 환불 처리
+                        mainActivity.addGold(price); // 실패 시 환불 처리
                         Toast.makeText(requireContext(), "서버 통신 실패로 구매가 취소되었습니다.", Toast.LENGTH_SHORT).show();
                     });
         } else {
@@ -359,6 +374,11 @@ public class RightFragment extends Fragment {
         );
         imageView.setLayoutParams(imageParams);
         tile.addView(imageView);
+
+        if (!isUnlocked) {
+            addPriceLabel(tile, getItemPrice(itemName, false));
+        }
+
 
         // 자물쇠 아이콘 레이어 결합
         if (!isUnlocked) {
@@ -418,12 +438,17 @@ public class RightFragment extends Fragment {
             imageView.setAlpha(0.4f);
         }
 
+
         FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
         imageView.setLayoutParams(imageParams);
         tile.addView(imageView);
+
+        if (!isUnlocked) {
+            addPriceLabel(tile, getItemPrice(itemName, true));
+        }
 
         if (!isUnlocked) {
             ImageView lockView = new ImageView(requireContext());
@@ -600,6 +625,7 @@ public class RightFragment extends Fragment {
         resetPendingStates();
         MainActivity mainActivity = (MainActivity) getActivity();
         int currentGold = (mainActivity != null) ? mainActivity.getGold() : 0;
+        int price = getItemPrice(itemName, isInterior);
 
         pendingIsPurchase = true;
         pendingItemName = itemName;
@@ -608,12 +634,13 @@ public class RightFragment extends Fragment {
 
         TextView tvConfirmMessage = changeConfirmPopup.findViewById(R.id.tvConfirmMessage);
         if (tvConfirmMessage != null) {
-            if (currentGold < ITEM_PRICE) {
+            if (currentGold < price) {
                 tvConfirmMessage.setText("재화가 부족하여\n구매할 수 없습니다.\n(보유: " + currentGold + "G)");
             } else {
-                tvConfirmMessage.setText(ITEM_PRICE + " Gold를 사용하여\n구매하시겠습니까?\n(보유: " + currentGold + "G)");
+                tvConfirmMessage.setText(price + " Gold를 사용하여\n구매하시겠습니까?\n(보유: " + currentGold + "G)");
             }
         }
+
         openPopupAnimation();
     }
 
@@ -676,5 +703,26 @@ public class RightFragment extends Fragment {
                         endAction.run();
                     }
                 }).start();
+    }
+
+    private void addPriceLabel(FrameLayout tile, int price) {
+        TextView priceView = new TextView(requireContext());
+        priceView.setText(price + "G");
+        priceView.setTextSize(12);
+        priceView.setTextColor(Color.WHITE);
+        priceView.setTypeface(null, android.graphics.Typeface.BOLD);
+        priceView.setGravity(Gravity.CENTER);
+        priceView.setBackgroundResource(R.drawable.bg_price_label);
+        priceView.setPadding(dpToPx(6), dpToPx(2), dpToPx(6), dpToPx(2));
+
+        FrameLayout.LayoutParams priceParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+
+        priceParams.gravity = Gravity.BOTTOM | Gravity.END;
+        priceParams.setMargins(0, 0, dpToPx(1), dpToPx(1));
+
+        tile.addView(priceView, priceParams);
     }
 }
