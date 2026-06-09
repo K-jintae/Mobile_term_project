@@ -278,7 +278,11 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
 
                 String status = snapshot.getValue(String.class);
 
-                if ("online".equals(status)) {
+                //online 여부를 판단하여 boolean 플래그를 어댑터에 전달해야 합니다.
+                boolean isOnline = "online".equals(status);
+                item.setOnline(isOnline);
+
+                if (isOnline) {
                     item.setReason("● 접속중");
                 } else {
                     item.setReason("○ 오프라인");
