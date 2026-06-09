@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/item_friend_root"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/friend_root"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_friend_card"
     android:padding="18dp"
-    android:layout_marginBottom="14dp"
     android:elevation="2dp">
 
     <TextView
@@ -25,9 +25,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:background="@drawable/bg_friend_card"
         android:padding="16dp"
+        android:gravity="center_vertical"
         android:layout_marginBottom="12dp">
 
         <TextView
@@ -48,7 +48,7 @@
             android:padding="10dp"
             android:src="@drawable/copy"
             android:scaleType="centerInside"
-            android:tint="#6D4C41"/>
+            app:tint="#6D4C41"/>
     </LinearLayout>
 
     <LinearLayout
@@ -57,7 +57,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginBottom="12dp">
-        <!--자바 코드의 editSearchEmail = findViewById(R.id.edit_search_email); 과 매칭 -->
+
         <EditText
             android:id="@+id/edit_search_email"
             android:layout_width="0dp"

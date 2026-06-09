@@ -23,8 +23,6 @@ import androidx.lifecycle.ViewModelProvider;
 import java.util.Random;
 import android.widget.FrameLayout;
 import android.app.Dialog;
-import android.widget.Button;
-import android.view.ViewGroup;
 import android.view.Window;
 
 public class MainFragment extends Fragment {
@@ -53,6 +51,7 @@ public class MainFragment extends Fragment {
     // 도움말 팝업 관련 변수
     private LinearLayout helpPopup;
     private ImageButton btnOpenFriend;
+
     enum CharacterState {
         NORMAL,
         HUNGRY,
@@ -109,10 +108,10 @@ public class MainFragment extends Fragment {
         Button btnCloseNicknamePopup = view.findViewById(R.id.btnCloseNicknamePopup);
 
         btnOpenFriend = view.findViewById(R.id.btnOpenFriend);
-        if(btnOpenFriend != null){
+        if (btnOpenFriend != null) {
             applyPressAnimation(btnOpenFriend);
 
-            btnOpenFriend.setOnClickListener(v ->{
+            btnOpenFriend.setOnClickListener(v -> {
                 Intent intent = new Intent(getActivity(), FriendActivity.class);
                 startActivity(intent);
             });
@@ -149,6 +148,7 @@ public class MainFragment extends Fragment {
             }
         });
 
+        // [첫 번째 코드 핵심 기능 유지] 의상 교체 이벤트 및 휴면 복구 메시지 조건절 완벽 융합
         viewModel.getClothes().observe(getViewLifecycleOwner(), resId -> {
             if (resId != 0) {
                 clothesImage.setImageResource(resId);
@@ -165,8 +165,6 @@ public class MainFragment extends Fragment {
                 updateMessage(CharacterState.NORMAL);
             }
         });
-
-
 
         btnSettings.setOnClickListener(v -> showSettingsPopup());
 
@@ -185,7 +183,7 @@ public class MainFragment extends Fragment {
                     com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
 
                     SharedPreferences pref = requireActivity()
-                            .getSharedPreferences("user", requireContext().MODE_PRIVATE);
+                            .getSharedPreferences("user", Context.MODE_PRIVATE);
                     SharedPreferences.Editor editor = pref.edit();
                     editor.putBoolean("isLogin", false);
                     editor.apply();
@@ -211,45 +209,27 @@ public class MainFragment extends Fragment {
             }
         });
 
-
         btnClosePopup.setOnClickListener(v -> hideSettingsPopup(null));
 
-        dimView.setOnClickListener(v -> hideSettingsPopup(null));
-        // 팝업 바깥 부분을 클릭하면 열려있는 모든 팝업 닫기
+        // 팝업 바깥 부분을 클릭하면 열려있는 모든 팝업 순차 구조 닫기
         dimView.setOnClickListener(v -> {
-            // 소리 설정 팝업이 열려있으면 닫기
             if (soundSettingsPopup.getVisibility() == View.VISIBLE) {
                 hideSoundSettingsPopup(null);
             }
-            // 도움말 팝업이 열려있으면 닫기
             else if (helpPopup.getVisibility() == View.VISIBLE) {
                 hideHelpPopup(null);
             }
             else if (nicknamePopup.getVisibility() == View.VISIBLE) {
                 hideNicknamePopup(null);
             }
-            // 설정 팝업이 열려있으면 닫기
             else if (settingsPopup.getVisibility() == View.VISIBLE) {
                 hideSettingsPopup(null);
             }
         });
 
-        // 닉네임 수정 버튼 클릭 (설정창 닫고 닉네임 창 열기)
+        // [중복 교정 완료] 첫 번째 코드의 복수 정의 에러를 해결하고 "name" 고유 키 세션만 유지 결합
         btnEditNickname.setOnClickListener(v -> {
             hideSettingsPopup(() -> {
-                // 기존 저장된 닉네임이 있다면 불러와서 EditText에 표시
-                SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
-                String currentNickname = pref.getString("nickname", "");
-                etNickname.setText(currentNickname);
-
-                showNicknamePopup();
-            });
-        });
-
-        // 닉네임 수정 버튼 클릭 (설정창 닫고 닉네임 창 열기)
-        btnEditNickname.setOnClickListener(v -> {
-            hideSettingsPopup(() -> {
-                // MainActivity와 동일하게 "name" 키를 사용하여 불러옵니다.
                 SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
                 String currentNickname = pref.getString("name", "");
                 etNickname.setText(currentNickname);
@@ -258,38 +238,33 @@ public class MainFragment extends Fragment {
             });
         });
 
-        // 닉네임 저장 버튼 클릭 (SharedPreferences에 저장)
+        // 닉네임 저장 버튼 클릭 (로컬 파일 장부 및 원격 데이터베이스 동시 저장)
         btnSaveNickname.setOnClickListener(v -> {
             String newNickname = etNickname.getText().toString().trim();
             if (!newNickname.isEmpty()) {
-                // MainActivity와 동일하게 "name" 키를 사용하여 저장합니다.
                 SharedPreferences pref = requireActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putString("name", newNickname);
                 editor.apply();
 
-                // MainActivity의 updatePlayerName 메서드를 호출하여 상단 UI 즉시 변경
-                if(getActivity() instanceof MainActivity){
+                if (getActivity() instanceof MainActivity) {
                     MainActivity mainActivity = (MainActivity) getActivity();
                     TextView tvMainPlayerName = mainActivity.findViewById(R.id.tvPlayerName);
-                    if(tvMainPlayerName != null){
+                    if (tvMainPlayerName != null) {
                         tvMainPlayerName.setText(newNickname);
                     }
                 }
 
-                // 파이어베이스 FireStore 서버에 실시간 원격 저장
                 com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
                 if (auth.getCurrentUser() != null) {
                     String uid = auth.getCurrentUser().getUid();
                     com.google.firebase.firestore.FirebaseFirestore.getInstance()
                             .collection("users").document(uid)
-                            .update("name", newNickname) // users -> UID 문서의 name 필드를 새 닉네임으로 변경
+                            .update("name", newNickname)
                             .addOnSuccessListener(aVoid -> {
-                                // 서버 저장 성공 시 디버그 로그 기록
                                 android.util.Log.d("Firebase", "닉네임 서버 저장 완료: " + newNickname);
                             })
                             .addOnFailureListener(e -> {
-                                // 실패 시 기록
                                 android.util.Log.e("Firebase", "닉네임 서버 저장 실패", e);
                             });
                 }
@@ -301,44 +276,32 @@ public class MainFragment extends Fragment {
             }
         });
 
-        // 닉네임 팝업 닫기 버튼
         btnCloseNicknamePopup.setOnClickListener(v -> hideNicknamePopup(null));
 
-
-        // 소리 설정 버튼 클릭
         btnSound.setOnClickListener(v -> {
             hideSettingsPopup(() -> showSoundSettingsPopup());
         });
 
-        // 도움말 버튼 클릭
         btnHelp.setOnClickListener(v -> {
             hideSettingsPopup(() -> showHelpPopup());
         });
 
-        // 소리 ON 버튼 클릭
         btnSoundOn.setOnClickListener(v -> {
-            isSoundOn = true;              //상태 변경
-            updateSoundButtonUI();         //UI 반영
-
+            isSoundOn = true;
+            updateSoundButtonUI();
             ((MainActivity) getActivity()).setSound(true);
             Toast.makeText(getActivity(), "음성이 켜졌습니다", Toast.LENGTH_SHORT).show();
         });
 
-        //소리 mute
         btnSoundMute.setOnClickListener(v -> {
             isSoundOn = false;
             updateSoundButtonUI();
-
             ((MainActivity) getActivity()).setSound(false);
             Toast.makeText(getActivity(), "음성이 꺼졌습니다", Toast.LENGTH_SHORT).show();
         });
 
-        // 소리 설정 팝업 닫기 버튼
         btnCloseSoundPopup.setOnClickListener(v -> hideSoundSettingsPopup(null));
-
-        // 도움말 팝업 닫기 버튼
         btnCloseHelpPopup.setOnClickListener(v -> hideHelpPopup(null));
-
 
         return view;
     }
@@ -370,10 +333,7 @@ public class MainFragment extends Fragment {
     private void showSettingsPopup() {
         dimView.setAlpha(0f);
         dimView.setVisibility(View.VISIBLE);
-        dimView.animate()
-                .alpha(1f)
-                .setDuration(180)
-                .start();
+        dimView.animate().alpha(1f).setDuration(180).start();
 
         settingsPopup.setVisibility(View.VISIBLE);
         settingsPopup.setAlpha(0f);
@@ -382,29 +342,19 @@ public class MainFragment extends Fragment {
         settingsPopup.setTranslationY(20f);
 
         settingsPopup.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .translationY(0f)
-                .setDuration(220)
-                .start();
+                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                .setDuration(220).start();
     }
 
     private void hideSettingsPopup(Runnable endAction) {
-        dimView.animate()
-                .alpha(0f)
-                .setDuration(160)
+        dimView.animate().alpha(0f).setDuration(160)
                 .withEndAction(() -> {
                     dimView.setVisibility(View.GONE);
                     dimView.setAlpha(1f);
-                })
-                .start();
+                }).start();
 
         settingsPopup.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .translationY(16f)
+                .alpha(0f).scaleX(0.9f).scaleY(0.9f).translationY(16f)
                 .setDuration(180)
                 .withEndAction(() -> {
                     settingsPopup.setVisibility(View.GONE);
@@ -416,18 +366,13 @@ public class MainFragment extends Fragment {
                     if (endAction != null) {
                         endAction.run();
                     }
-                })
-                .start();
+                }).start();
     }
 
-    // ===== 소리 설정 팝업 메서드 =====
     private void showSoundSettingsPopup() {
         dimView.setAlpha(0f);
         dimView.setVisibility(View.VISIBLE);
-        dimView.animate()
-                .alpha(1f)
-                .setDuration(180)
-                .start();
+        dimView.animate().alpha(1f).setDuration(180).start();
 
         soundSettingsPopup.setVisibility(View.VISIBLE);
         soundSettingsPopup.setAlpha(0f);
@@ -436,29 +381,19 @@ public class MainFragment extends Fragment {
         soundSettingsPopup.setTranslationY(20f);
 
         soundSettingsPopup.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .translationY(0f)
-                .setDuration(220)
-                .start();
+                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                .setDuration(220).start();
     }
 
     private void hideSoundSettingsPopup(Runnable endAction) {
-        dimView.animate()
-                .alpha(0f)
-                .setDuration(160)
+        dimView.animate().alpha(0f).setDuration(160)
                 .withEndAction(() -> {
                     dimView.setVisibility(View.GONE);
                     dimView.setAlpha(1f);
-                })
-                .start();
+                }).start();
 
         soundSettingsPopup.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .translationY(16f)
+                .alpha(0f).scaleX(0.9f).scaleY(0.9f).translationY(16f)
                 .setDuration(180)
                 .withEndAction(() -> {
                     soundSettingsPopup.setVisibility(View.GONE);
@@ -470,8 +405,7 @@ public class MainFragment extends Fragment {
                     if (endAction != null) {
                         endAction.run();
                     }
-                })
-                .start();
+                }).start();
     }
 
     private void updateSoundButtonUI() {
@@ -484,14 +418,10 @@ public class MainFragment extends Fragment {
         }
     }
 
-    // ===== 도움말 팝업 메서드 =====
     private void showHelpPopup() {
         dimView.setAlpha(0f);
         dimView.setVisibility(View.VISIBLE);
-        dimView.animate()
-                .alpha(1f)
-                .setDuration(180)
-                .start();
+        dimView.animate().alpha(1f).setDuration(180).start();
 
         helpPopup.setVisibility(View.VISIBLE);
         helpPopup.setAlpha(0f);
@@ -500,29 +430,19 @@ public class MainFragment extends Fragment {
         helpPopup.setTranslationY(20f);
 
         helpPopup.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .translationY(0f)
-                .setDuration(220)
-                .start();
+                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                .setDuration(220).start();
     }
 
     private void hideHelpPopup(Runnable endAction) {
-        dimView.animate()
-                .alpha(0f)
-                .setDuration(160)
+        dimView.animate().alpha(0f).setDuration(160)
                 .withEndAction(() -> {
                     dimView.setVisibility(View.GONE);
                     dimView.setAlpha(1f);
-                })
-                .start();
+                }).start();
 
         helpPopup.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .translationY(16f)
+                .alpha(0f).scaleX(0.9f).scaleY(0.9f).translationY(16f)
                 .setDuration(180)
                 .withEndAction(() -> {
                     helpPopup.setVisibility(View.GONE);
@@ -534,18 +454,13 @@ public class MainFragment extends Fragment {
                     if (endAction != null) {
                         endAction.run();
                     }
-                })
-                .start();
+                }).start();
     }
 
-    // ===== 닉네임 팝업 메서드 =====
     private void showNicknamePopup() {
         dimView.setAlpha(0f);
         dimView.setVisibility(View.VISIBLE);
-        dimView.animate()
-                .alpha(1f)
-                .setDuration(180)
-                .start();
+        dimView.animate().alpha(1f).setDuration(180).start();
 
         nicknamePopup.setVisibility(View.VISIBLE);
         nicknamePopup.setAlpha(0f);
@@ -554,29 +469,19 @@ public class MainFragment extends Fragment {
         nicknamePopup.setTranslationY(20f);
 
         nicknamePopup.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .translationY(0f)
-                .setDuration(220)
-                .start();
+                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                .setDuration(220).start();
     }
 
     private void hideNicknamePopup(Runnable endAction) {
-        dimView.animate()
-                .alpha(0f)
-                .setDuration(160)
+        dimView.animate().alpha(0f).setDuration(160)
                 .withEndAction(() -> {
                     dimView.setVisibility(View.GONE);
                     dimView.setAlpha(1f);
-                })
-                .start();
+                }).start();
 
         nicknamePopup.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .translationY(16f)
+                .alpha(0f).scaleX(0.9f).scaleY(0.9f).translationY(16f)
                 .setDuration(180)
                 .withEndAction(() -> {
                     nicknamePopup.setVisibility(View.GONE);
@@ -588,13 +493,10 @@ public class MainFragment extends Fragment {
                     if (endAction != null) {
                         endAction.run();
                     }
-                })
-                .start();
+                }).start();
     }
 
     private void updateMessage(CharacterState state) {
-
-        // 48시간 미접속 상태면 무조건 이 메시지 출력
         if (getActivity() instanceof MainActivity
                 && ((MainActivity) getActivity()).isNeedQuizRecovery()) {
 
@@ -608,7 +510,6 @@ public class MainFragment extends Fragment {
         Random random = new Random();
 
         switch (state) {
-
             case NORMAL:
                 String[] normalMessage = {
                         "안녕! 반가워!",
@@ -636,24 +537,37 @@ public class MainFragment extends Fragment {
             tvMessage.setText(message);
         }
     }
+
     private void continueQuiz() {
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences("continue_quiz", Context.MODE_PRIVATE);
 
         boolean hasContinue = prefs.getBoolean("has_continue", false);
+        boolean hasLastQuiz = prefs.getBoolean("has_last_quiz", false);
 
-        if (!hasContinue) {
+        if (!hasContinue && !hasLastQuiz) {
             Toast.makeText(getActivity(), "이어풀 문제가 없어요.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        int subjectId = prefs.getInt("subject_id", 1);
-        String difficultyLevel = prefs.getString("difficulty_level", "easy");
+        int subjectId;
+        String difficultyLevel;
+        boolean continueMode;
+
+        if (hasContinue) {
+            subjectId = prefs.getInt("subject_id", 1);
+            difficultyLevel = prefs.getString("difficulty_level", "easy");
+            continueMode = true;
+        } else {
+            subjectId = prefs.getInt("last_subject_id", 1);
+            difficultyLevel = prefs.getString("last_difficulty_level", "easy");
+            continueMode = false;
+        }
 
         Bundle bundle = new Bundle();
         bundle.putInt("subject_id", subjectId);
         bundle.putString("difficulty_level", difficultyLevel);
-        bundle.putBoolean("continue_mode", true);
+        bundle.putBoolean("continue_mode", continueMode);
 
         QuizPlayFragment fragment = new QuizPlayFragment();
         fragment.setArguments(bundle);
@@ -662,6 +576,7 @@ public class MainFragment extends Fragment {
             ((MainActivity) getActivity()).openFragment(fragment);
         }
     }
+
     private void showContinueQuizDialog() {
         Dialog dialog = new Dialog(requireContext());
         View dialogView = LayoutInflater.from(requireContext())
@@ -693,5 +608,12 @@ public class MainFragment extends Fragment {
                     ViewGroup.LayoutParams.WRAP_CONTENT
             );
         }
+    }
+
+    // [두 번째 코드 필수 기능] 타 화면에서 홈 화면으로 복귀 시 캐릭터 말풍선 기본 대사 최신화
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateMessage(CharacterState.NORMAL);
     }
 }

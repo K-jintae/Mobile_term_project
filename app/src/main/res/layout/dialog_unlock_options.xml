@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_rounded"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- 팝업 제목 -->
+    <TextView
+        android:id="@+id/tvUnlockTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[C언어] 과목 해금"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- 설명 텍스트 -->
+    <TextView
+        android:id="@+id/tvUnlockMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="보유 중인 해금권을 사용하거나\n300 골드를 소모하여 열 수 있습니다."
+        android:textSize="15sp"
+        android:textColor="#666666"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.2"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- 정보 표시 영역 (카드 형태) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#F8F9FA"
+        android:padding="12dp"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:id="@+id/tvMyTickets"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="• 보유 해금권: 0개"
+            android:textSize="14sp"
+            android:textColor="#444444"/>
+
+        <TextView
+            android:id="@+id/tvMyGold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="• 보유 골드: 1,200 G"
+            android:textSize="14sp"
+            android:textColor="#444444"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- 버튼 세로 배치  -->
+    <Button
+        android:id="@+id/btnUnlockWithTicket"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="해금권 사용하기"
+        android:backgroundTint="#4CAF50"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnUnlockWithGold"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="300 골드 사용"
+        android:backgroundTint="#FF9800"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:id="@+id/tvCancelUnlock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="취소"
+        android:textSize="15sp"
+        android:textColor="#999999"
+        android:layout_gravity="center_horizontal"
+        android:padding="8dp"/>
+
+</LinearLayout>

@@ -68,33 +68,37 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         FriendItem item = friendList.get(position);
 
-        String name = item.getName() != null && !item.getName().isEmpty()
-                ? item.getName()
-                : "이름 없음";
+        // 1. 방어적 문자열 바인딩 데이터 확보
+        String name = item.getName() != null && !item.getName().isEmpty() ? item.getName() : "이름 없음";
+        String level = item.getLevel() != null && !item.getLevel().isEmpty() ? item.getLevel() : "없음";
+        String status = item.getStatus() != null ? item.getStatus() : "pending_none";
+        String reason = item.getReason() != null ? item.getReason() : "";
 
-        String level = item.getLevel() != null && !item.getLevel().isEmpty()
-                ? item.getLevel()
-                : "없음";
-
-        String status = item.getStatus() != null
-                ? item.getStatus()
-                : "pending_none";
-
-        String reason = item.getReason() != null
-                ? item.getReason()
-                : "";
-
+        // 2. 기본 이름 설정
         holder.tvItemUserId.setText(name);
-        applyLevelColor(holder.tvItemLevel, level);
 
+        // 3. 각 관계 상태에 따른 동적 장부 사유 메시지 구축 (main의 가이드 라인 적용)
+        String dynamicReason = reason;
         if ("confirmed".equals(status)) {
+            dynamicReason = item.isOnline() ? "온라인" : "오프라인";
             holder.tvItemReason.setText(item.isOnline() ? "내 친구 · 온라인" : "내 친구 · 오프라인");
-        } else if (!reason.isEmpty()) {
-            holder.tvItemReason.setText(reason);
+        } else if ("pending_sent".equals(status)) {
+            dynamicReason = "친구 요청 보냄";
+            holder.tvItemReason.setText("내가 보낸 요청");
+        } else if ("pending_received".equals(status)) {
+            dynamicReason = "나에게 온 요청";
+            holder.tvItemReason.setText("나에게 온 요청");
         } else {
-            holder.tvItemReason.setText("추천 친구");
+            if (dynamicReason.isEmpty()) {
+                dynamicReason = "추천 친구";
+            }
+            holder.tvItemReason.setText(dynamicReason);
         }
 
+        // 4. 티어 등급 컬러 스팬 시스템 맵핑 결합
+        applyLevelColor(holder.tvItemLevel, level, dynamicReason);
+
+        // 5. 버튼 상태 초기화 및 관계별 뷰 바인딩 분기 실행
         resetButtons(holder);
 
         if ("confirmed".equals(status)) {
@@ -246,28 +250,41 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.FriendView
         }
     }
 
-    private void applyLevelColor(TextView textView, String level) {
+    /**
+     * 티어 등급 텍스트 컬러 서식 적용 시스템 메서드 (main 기획 결합본)
+     */
+    private void applyLevelColor(TextView textView, String level, String reason) {
+        if (textView == null) return;
+
         String safeLevel = level != null && !level.isEmpty() ? level : "없음";
-        String text = "레벨: " + safeLevel;
+        String text;
+
+        if (reason == null || reason.isEmpty()) {
+            text = "레벨: " + safeLevel;
+        } else {
+            text = "레벨: " + safeLevel + "   |   " + reason;
+        }
 
         SpannableString spannable = new SpannableString(text);
 
         int start = text.indexOf(safeLevel);
+        if (start == -1) {
+            textView.setText(text);
+            return;
+        }
         int end = start + safeLevel.length();
 
         int color = Color.GRAY;
 
         switch (safeLevel) {
             case "하수":
-                color = Color.parseColor("#9CCC65");
+                color = Color.parseColor("#9CCC65"); // 연두
                 break;
-
             case "중수":
-                color = Color.parseColor("#64B5F6");
+                color = Color.parseColor("#64B5F6"); // 하늘
                 break;
-
             case "고수":
-                color = Color.parseColor("#FFB74D");
+                color = Color.parseColor("#FFB74D"); // 주황
                 break;
         }
 
