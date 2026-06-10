@@ -105,7 +105,7 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                 return;
             }
 
-            searchAndAddFriend(input);
+            searchUsers(input);
         });
 
         btnRecommendedFriends.setOnClickListener(v -> {
@@ -303,21 +303,82 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
         presenceRefs.add(statusRef);
         presenceListeners.add(listener);
     }
+    private void searchUsers(String input) {
+        String keyword = input.trim().toLowerCase();
 
-    private void searchAndAddFriend(String input) {
-        searchUserByField("id", input, found -> {
-            if (found) return;
+        removePresenceListeners();
 
-            searchUserByField("userId", input, foundUserId -> {
-                if (foundUserId) return;
+        isMyFriendMode = false;
+        btnRecommendedFriends.setText("내 친구 목록 보기");
+        btnRecommendedFriends.setBackgroundTintList(
+                ColorStateList.valueOf(Color.parseColor("#F5EBE0"))
+        );
 
-                searchUserByField("name", input, foundName -> {
-                    if (!foundName) {
-                        Toast.makeText(this, "존재하지 않는 사용자입니다.", Toast.LENGTH_SHORT).show();
+        friendList.clear();
+        adapter.notifyDataSetChanged();
+
+        firestore.collection("users")
+                .limit(100)
+                .get()
+                .addOnSuccessListener(query -> {
+                    friendList.clear();
+
+                    for (DocumentSnapshot doc : query.getDocuments()) {
+                        String uid = doc.getId();
+
+                        if (uid.equals(currentUid)) {
+                            continue;
+                        }
+
+                        String id = doc.getString("id");
+                        String userId = doc.getString("userId");
+                        String name = doc.getString("name");
+
+                        String safeId = id == null ? "" : id.toLowerCase();
+                        String safeUserId = userId == null ? "" : userId.toLowerCase();
+                        String safeName = name == null ? "" : name.toLowerCase();
+
+                        if (safeId.contains(keyword)
+                                || safeUserId.contains(keyword)
+                                || safeName.contains(keyword)) {
+
+                            addSearchResultToList(doc);
+                        }
                     }
-                });
-            });
-        });
+
+                    adapter.notifyDataSetChanged();
+
+                    if (friendList.isEmpty()) {
+                        Toast.makeText(this, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                );
+    }
+    private void addSearchResultToList(DocumentSnapshot doc) {
+        String targetUid = doc.getId();
+
+        String targetName = doc.getString("id");
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = doc.getString("userId");
+        }
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = doc.getString("name");
+        }
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = "사용자";
+        }
+
+        String level = doc.getString("level");
+        if (level == null || level.isEmpty()) {
+            level = "없음";
+        }
+
+        FriendItem item = new FriendItem(targetUid, targetName, "pending_none", level);
+        item.setReason("검색 결과");
+
+        friendList.add(item);
     }
 
     private interface SearchCallback {
@@ -336,23 +397,50 @@ public class FriendActivity extends AppCompatActivity implements FriendAdapter.O
                     }
 
                     DocumentSnapshot doc = query.getDocuments().get(0);
-                    String targetUid = doc.getId();
-
-                    String targetName = doc.getString("id");
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = doc.getString("userId");
-                    }
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = doc.getString("name");
-                    }
-                    if (targetName == null || targetName.isEmpty()) {
-                        targetName = "사용자";
-                    }
-
-                    handleFriendRequest(targetUid, targetName);
+                    showSearchedUser(doc);
                     callback.onResult(true);
                 })
                 .addOnFailureListener(e -> callback.onResult(false));
+    }
+    private void showSearchedUser(DocumentSnapshot doc) {
+        String targetUid = doc.getId();
+
+        if (targetUid.equals(currentUid)) {
+            Toast.makeText(this, "자기 자신은 검색 결과에 추가할 수 없습니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String targetName = doc.getString("id");
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = doc.getString("userId");
+        }
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = doc.getString("name");
+        }
+        if (targetName == null || targetName.isEmpty()) {
+            targetName = "사용자";
+        }
+
+        String level = doc.getString("level");
+        if (level == null || level.isEmpty()) {
+            level = "없음";
+        }
+
+        removePresenceListeners();
+
+        isMyFriendMode = false;
+        btnRecommendedFriends.setText("내 친구 목록 보기");
+        btnRecommendedFriends.setBackgroundTintList(
+                ColorStateList.valueOf(Color.parseColor("#F5EBE0"))
+        );
+
+        friendList.clear();
+
+        FriendItem item = new FriendItem(targetUid, targetName, "pending_none", level);
+        item.setReason("검색 결과");
+
+        friendList.add(item);
+        adapter.notifyDataSetChanged();
     }
 
     private void handleFriendRequest(String targetUid, String targetName) {
