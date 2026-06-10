@@ -1,3 +1,17 @@
 <resources>
-    <string name="app_name">Term_Project</string>
+    <string name="help_aimigo">
+
+안녕하세요! Aimigo에 오신 걸 환영합니다.\n\n
+
+Aimigo는 인공지능 전공 학생들을 위한 교육용 게임 앱입니다.\n
+
+게임 내 재화를 통해 나만의 캐릭터를 꾸밀 수 있습니다!\n\n
+
+주제별로 나뉘어 있는 퀴즈를 혼자서 풀거나,\n
+
+친구와 함께 박진감 넘치는 실시간 1 vs 1 퀴즈 대결을 통해
+
+공부도 하고 나만의 캐릭터도 꾸며가면서 Aimigo를 즐겨보세요!
+
+</string>
 </resources>

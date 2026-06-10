@@ -191,7 +191,6 @@
         android:id="@+id/helpPopup"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:maxHeight="500dp"
         android:background="@drawable/bg_popup_panel"
         android:orientation="vertical"
         android:padding="20dp"
@@ -215,14 +214,14 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="260dp"
             android:layout_marginBottom="15dp">
 
             <TextView
                 android:id="@+id/tvHelpContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="도움말 내용 작성하기"
+                android:text="@string/help_aimigo"
                 android:textColor="#2B2B2B"
                 android:textSize="14sp"
                 android:lineSpacingMultiplier="1.5"
