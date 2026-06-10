@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
+import com.google.firebase.auth.FirebaseAuth;
 
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -536,10 +537,13 @@ public class MainFragment extends Fragment {
             tvMessage.setText(message);
         }
     }
-
+    private String getPrefUid() {
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        return (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : "guest";
+    }
     private void continueQuiz() {
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences("continue_quiz", Context.MODE_PRIVATE);
+                .getSharedPreferences("continue_quiz_" + getPrefUid(), Context.MODE_PRIVATE);
 
         boolean hasContinue = prefs.getBoolean("has_continue", false);
         boolean hasLastQuiz = prefs.getBoolean("has_last_quiz", false);

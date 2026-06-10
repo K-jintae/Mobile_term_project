@@ -561,7 +561,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE)
+                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("has_continue", false)
                 .remove("question_index")
@@ -973,7 +973,7 @@ public class QuizPlayFragment extends Fragment {
         }
 
         SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREF_CONTINUE_QUIZ, Context.MODE_PRIVATE);
+                .getSharedPreferences(PREF_CONTINUE_QUIZ + "_" + getPrefUid(), Context.MODE_PRIVATE);
 
         prefs.edit()
                 .putBoolean("has_last_quiz", true)
